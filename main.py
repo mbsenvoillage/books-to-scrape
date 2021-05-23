@@ -18,6 +18,6 @@ infos = [
 html = getProductInfo.get_parsed_html(url)
 
 
-print(getProductInfo.get_description(html))
+print(getProductInfo.get_title(html))
 
 

@@ -83,7 +83,7 @@ def get_rating(parsed_html: object) -> str:
             err = True
         return '' if err else str(ratings.index(num_of_stars)+1)
         
-def get_description(parsed_html: object) -> str:
+def get_product_description(parsed_html: object) -> str:
     description = ''
     if parsed_html == None:
         print("Cannot fetch product description for unknown HTML page")
@@ -96,3 +96,14 @@ def get_description(parsed_html: object) -> str:
         except Exception as e:
             print(f"Could not get the description. Error: {e}")
         return description
+
+def get_title(parsed_html: object) -> str:
+    title = ''
+    if parsed_html == None:
+        print("Cannot fetch title for unknown HTML page")
+    else:
+        try:
+            title = parsed_html.find('h1').text
+        except Exception as e:
+            print(f"Could not fetch product title. Error: {e}")
+        return title
