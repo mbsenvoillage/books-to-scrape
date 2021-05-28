@@ -1,4 +1,6 @@
-import getProductInfo
+import get_book
+import urllib
+
 
 url = 'http://books.toscrape.com/catalogue/a-light-in-the-attic_1000/index.html'
 
@@ -15,9 +17,14 @@ infos = [
 "image_url",
 ]
 
-html = getProductInfo.get_parsed_html(url)
+try:
+    cat = get_book.scrape(url)
+except Exception as e:
+    print(e)
+else:
+    print(cat)
 
-
-print(getProductInfo.get_title(html))
-
-
+# try:
+#     urllib.request.urlretrieve('http://books.toscrape.com/media/cache/fe/72/fe72f0532301ec28892ae79a629a293c.jpg', './pic.jpg')
+# except Exception as e:
+#     print(e)
