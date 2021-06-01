@@ -31,8 +31,11 @@ def get_rating(parsed_html: object) -> str:
     return str(ratings.index(num_of_stars)+1)
         
 def get_description(parsed_html: object) -> str:
-    description = ''    
-    siblings = parsed_html.find('div', {'id': 'product_description'}).next_siblings
+    description = ''
+    product_description = parsed_html.find('div', {'id': 'product_description'})
+    if (not product_description):
+        return 'No description'
+    siblings = product_description.next_siblings
     for sibling in siblings:
         if sibling.name == "p":
             description = sibling.text 

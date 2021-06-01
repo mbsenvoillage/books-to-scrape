@@ -20,11 +20,14 @@ infos = [
 ]
 
 try:
-    cat = get_category.get_list_of_categories(utils.get_page_html(url))
+    list_of_books = get_category.get_all_books_url(utils.get_page_html('http://books.toscrape.com/catalogue/category/books/classics_6/index.html'))
+    books_dets = []
+    for url in list_of_books:
+        print(get_book.scrape(url)['title'])
 except Exception as e:
     print(e)
 else:
-    print(cat)
+    print(books_dets)
 
 # try:
 #     urllib.request.urlretrieve('http://books.toscrape.com/media/cache/fe/72/fe72f0532301ec28892ae79a629a293c.jpg', './pic.jpg')
