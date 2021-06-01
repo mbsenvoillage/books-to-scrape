@@ -1,8 +1,10 @@
 import get_book
 import urllib
+import get_category
+import utils
 
 
-url = 'http://books.toscrape.com/catalogue/a-light-in-the-attic_1000/index.html'
+url = 'http://books.toscrape.com/'
 
 infos = [
 "product_page_url",
@@ -18,7 +20,7 @@ infos = [
 ]
 
 try:
-    cat = get_book.scrape(url)
+    cat = get_category.get_list_of_categories(utils.get_page_html(url))
 except Exception as e:
     print(e)
 else:
@@ -28,3 +30,4 @@ else:
 #     urllib.request.urlretrieve('http://books.toscrape.com/media/cache/fe/72/fe72f0532301ec28892ae79a629a293c.jpg', './pic.jpg')
 # except Exception as e:
 #     print(e)
+
