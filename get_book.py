@@ -1,9 +1,7 @@
 from urllib import error
 import logging
-from utils import get_page_html
-from urllib.error import URLError
+from utils import is_page_scrapable
 
-logging.basicConfig(filename='app.log', format='%(asctime)s: Module: %(module)s / Function: %(funcName)s / Level: %(levelname)s => %(message)s')
 
 def get_category(parsed_html: object) -> str:
     ul = parsed_html.find('ul', {'class': 'breadcrumb'}).find_all('li')
@@ -47,23 +45,11 @@ def get_title(parsed_html: object) -> str:
 def get_picture_url(parsed_html: object) -> str:
     return parsed_html.find('img')['src']
 
-def is_page_scrapable(url: str) -> object:
-    try:
-        html = get_page_html(url)
-        assert html != None, "The Beautiful Soup parser returned an empty object"
-    except URLError as e :
-        logging.error(f"{e} - URL: {url}.")
-        raise   
-    except AssertionError as e:
-        logging.error(e)
-        raise
-    else:
-        return html
 
 def scrape(url: str) -> object:
     scrape_dict = {}
-    html = is_page_scrapable(url)
     try:
+        html = is_page_scrapable(url)
         for key, value in get_table(html).items():
             scrape_dict[key] = value
         scrape_dict['url'] = url
