@@ -28,11 +28,15 @@ if __name__ == '__main__':
     init_logger()
 
 try:
-    list = get_category.scrape(get_category.urlwithnext)
+    all_books_from_category = []
+    cat_page_urls = get_category.scrape(get_category.urlwithoutnext)
+    for arrayofurls in cat_page_urls:
+        for url in arrayofurls:
+            all_books_from_category.append(get_book.scrape(url))
 except Exception as e:
     print(e)
 else:
-    print(list)
+    print(all_books_from_category)
 
 # try:
 #     urllib.request.urlretrieve('http://books.toscrape.com/media/cache/fe/72/fe72f0532301ec28892ae79a629a293c.jpg', './pic.jpg')

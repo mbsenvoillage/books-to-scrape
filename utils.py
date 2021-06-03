@@ -6,9 +6,7 @@ import logging
 def get_page_html(url: str) -> object:
     req = ''
     bs = ''
-    print(url)
     try:
-        print('i am in')
         req = requests.get(url, timeout=2)
         req.raise_for_status()
     except HTTPError as e:
@@ -25,6 +23,7 @@ def get_page_html(url: str) -> object:
         raise
     else:
         try:
+            req.encoding = 'utf-8'
             html = req.text
             bs = BeautifulSoup(html, 'lxml')
         except Exception as e:
