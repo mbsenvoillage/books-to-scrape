@@ -1,6 +1,6 @@
 from urllib import error
 import logging
-from utils import is_page_scrapable
+from utils import get_soup
 
 
 def get_category(parsed_html: object) -> str:
@@ -49,7 +49,7 @@ def get_picture_url(parsed_html: object) -> str:
 def scrape(url: str) -> object:
     scrape_dict = {}
     try:
-        html = is_page_scrapable(url)
+        html = get_soup(url)
         for key, value in get_table(html).items():
             scrape_dict[key] = value
         scrape_dict['url'] = url

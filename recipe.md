@@ -35,6 +35,21 @@ except requests.exceptions.RequestException as err:
     print ("OOps: Something Else",err)
 ```
 
+- Where can it go wrong ?
+    - anytime you make a request to the server
+        - HTTP errors
+            - If it times out, you can set a retry, if it still fails after retries, then check underneath
+            - If the base URL is unreachable, the program should be stopped, and a message should be printed to the console
+            - If a category page is unreachable :
+                - If the user only wants to retrieve the books from a category, the program should be stopped and a message should be printed to the console
+                - If the user wants to retrieve more than one category, then the unreachable urls should printed to the console
+            - If a book's page is unreachable, then the url should be printed to the console
+    - anytime you try to retrieve some part of the DOM
+        - that part might not exist
+            - If it's an element that should be present on the csv file, then a default value should be returned an added to the csv file
+            - If it's an element that should not be present on the csv file, then a message with the non existant element at the end of the path should be printed to the console
+    
+
 ### Retries
 
 ```
@@ -83,3 +98,4 @@ def do_something():
 
 - What does `if __name__ == '__main__'` mean ?
     - https://stackoverflow.com/questions/419163/what-does-if-name-main-do
+

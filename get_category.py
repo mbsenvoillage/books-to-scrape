@@ -1,6 +1,6 @@
 from urllib.parse import urlparse
 import logging
-from utils import get_page_html, is_page_scrapable
+from utils import get_soup, get_soup
 import re
 import utils
 
@@ -30,7 +30,7 @@ def get_next_page_url(parsed_html: object, url: str):
     return next_page_url
 
 def test():
-    print(get_next_page_url(utils.get_page_html(urlwithnext), urlwithnext))
+    print(get_next_page_url(utils.get_soup(urlwithnext), urlwithnext))
 
 def get_all_books_url_from_page(parsed_html: object):
     books_container = get_page_book_list(parsed_html)
@@ -54,13 +54,13 @@ def get_all_books_url_from_page(parsed_html: object):
 def get_all_category_pages_url(url):
     category_page_urls = []
     category_page_urls.append(url)
-    html = is_page_scrapable(url)
+    html = get_soup(url)
     next_page_url = get_next_page_url(html, url)
     print(f"this is the next page url {next_page_url}")
     if next_page_url:
         category_page_urls.append(next_page_url)
     while next_page_url != '':
-        html = is_page_scrapable(urlparse(next_page_url).geturl())
+        html = get_soup(urlparse(next_page_url).geturl())
         next_page_url = get_next_page_url(html, url)
         if next_page_url:
             category_page_urls.append(next_page_url)
@@ -72,6 +72,6 @@ def scrape(url: str):
     category_page_urls = get_all_category_pages_url(url)
     list_of_url = []
     for url in category_page_urls:
-        html = is_page_scrapable(url)
+        html = get_soup(url)
         list_of_url.append(get_all_books_url_from_page(html))
     return list_of_url
