@@ -99,3 +99,5 @@ def do_something():
 - What does `if __name__ == '__main__'` mean ?
     - https://stackoverflow.com/questions/419163/what-does-if-name-main-do
 
+## Multithreading
+https://stackoverflow.com/questions/2846653/how-can-i-use-threading-in-python#:~:text=Python%20doesn't%20allow%20multi,global%20interpreter%20lock%20(GIL).

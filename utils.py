@@ -8,20 +8,12 @@ def get_page(url: str):
     try:
         res = requests.get(url, timeout=2)
         res.raise_for_status()
-    except HTTPError as e:
-        logging.error(e)
-        raise
-    except ConnectionError as e:
-        logging.error(e)
-        raise
-    except Timeout as e:
-        logging.error(e)
-        raise
-    except RequestException as e:
+        res = res.content
+    except (HTTPError, ConnectionError, Timeout, RequestException) as e:
         logging.error(e)
         raise
     else:
-        return res.content
+        return res
 
 def get_soup(url):
     bs = ''
@@ -31,13 +23,26 @@ def get_soup(url):
         raise
     else:
         try:
-            html = res.content
-            bs = BeautifulSoup(html, 'html.parser')
-            assert html != None, "The Beautiful Soup parser returned an empty object" 
+            bs = BeautifulSoup(res, 'html.parser')
+            assert res != None, "The Beautiful Soup parser returned an empty object" 
         except AssertionError as e:
             logging.error(e)
             raise
         except Exception as e:
             logging.error(e)
             raise
-    return bs
+        return bs
+
+
+def scrape_item_from_page(soup, selector, multi=False, process=lambda x: x.text, default="Nothing found"):
+    item = ''
+    try:
+        bs = soup.select(selector) if multi else soup.select_one(selector)
+        if not bs:
+            return default
+        item = process(bs)
+    except Exception as e:
+        logging.error(f"{e} : could not get item from page")
+        raise
+    else:
+        return item 
