@@ -3,6 +3,10 @@ import requests
 from requests.exceptions import HTTPError, ConnectionError, RequestException, Timeout
 import logging
 
+fieldnames = ['url', 'title', 'product_description', 'category', 'review_rating', 'image_url', 'universal_product_code (upc)', 'price_excluding_tax', 'price_including_tax', 'number_available']
+
+baseurl = 'http://books.toscrape.com/'
+
 def get_page(url: str):
     res = ''  
     try:

@@ -35,7 +35,6 @@ def get_all_category_pages_url(url):
     if next_page_url:
         category_page_urls.append(next_page_url)
         while next_page_url != 'Nothing found':
-            print(next_page_url)
             soup = get_soup(urlparse(next_page_url).geturl())
             next_page_url = scrape_item_from_page(soup, '#default > div > div > div > div > section > div:nth-child(2) > div > ul > li.next > a', process=lambda x: get_next_page_url(x, url))
             if next_page_url != 'Nothing found':
@@ -48,10 +47,9 @@ def get_all_category_pages_url(url):
 def scrape(url: str):  
     category_page_urls = get_all_category_pages_url(url)
     list_of_url = []
-    print(category_page_urls)
     for url in category_page_urls:
         soup = get_soup(url)
         list_of_url.extend(scrape_item_from_page(soup, '#default > div > div > div > div > section > div:nth-child(2) > ol > li > article > h3 > a', multi=True, process=lambda x: get_link(x)))
     return list_of_url
 
-print(scrape(cat_with_many_pages))
+# print(scrape(cat_with_many_pages))
