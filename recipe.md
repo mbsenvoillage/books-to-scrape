@@ -101,3 +101,16 @@ def do_something():
 
 ## Multithreading
 https://stackoverflow.com/questions/2846653/how-can-i-use-threading-in-python#:~:text=Python%20doesn't%20allow%20multi,global%20interpreter%20lock%20(GIL).
+
+## Asynchronous programming
+
+- When is it a good time to use ayncio ?
+    - When you encounter idle time
+- What does the await keyword mean ?
+    - It means while we wait for a response, feel free to do other stuff in the meantime. When the response arrives the even loop will resume the execution where it stopped when the await keyword was encountered.
+- When is it used ?
+    - It is also used to wait for the result of an async coroutine
+- How do you start an ayncio program ?
+    - `asyncio.run()`
+- How do you run stuff in parallel ?
+    - You use `asyncio.gather(func1(), func2())`
