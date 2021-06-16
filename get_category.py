@@ -28,24 +28,38 @@ def get_link(arr):
 
 #print(scrape_item_from_page(soup, '#default > div > div > div > div > section > div:nth-child(2) > ol > li > article > h3 > a', multi=True, process=lambda x: get_link(x)))
 
-def next_page_url(url, arr: List, starturl):
-    arr.append(url)
+async def next_page_url(url, starturl, myQueue):
+    # arr.append(url)
+    await myQueue.put(url)
     soup = get_soup(urlparse(url).geturl())
     next_url = scrape_item_from_page(soup, '#default > div > div > div > div > section > div:nth-child(2) > div > ul > li.next > a', process=lambda x: get_next_page_url(x, starturl))
     if next_url == 'Nothing found':
-        return arr
-    return next_page_url(next_url, arr, starturl)
+        return
+    return await next_page_url(next_url, starturl, myQueue)
 
-def scrape(url: str):  
-    category_page_urls = next_page_url(url, [], url)
-    list_of_url = []
-    for url in category_page_urls:
-        soup = get_soup(url)
-        list_of_url.extend(scrape_item_from_page(soup, '#default > div > div > div > div > section > div:nth-child(2) > ol > li > article > h3 > a', multi=True, process=lambda x: get_link(x)))
-    return list_of_url
+async def scrape(myQueue):  
+    # category_page_urls = next_page_url(url, [], url)
+    # list_of_url = []
+    # for url in category_page_urls:
+    url = await myQueue.get()
+    if url is None:
+        pass
+    soup = get_soup(url)
+    print(scrape_item_from_page(soup, '#default > div > div > div > div > section > div:nth-child(2) > ol > li > article > h3 > a', multi=True, process=lambda x: get_link(x)))
+    # list_of_url.extend(scrape_item_from_page(soup, '#default > div > div > div > div > section > div:nth-child(2) > ol > li > article > h3 > a', multi=True, process=lambda x: get_link(x)))
+    # return list_of_url
 
 start = time.time()
 
-print(scrape(urlwithoutnext))
+# print(scrape(urlwithoutnext))
+
+async def main(loop):
+    myQueue = asyncio.Queue(loop=loop)
+    await asyncio.wait([next_page_url(cat_with_many_pages, cat_with_many_pages, myQueue), scrape(myQueue)]) 
+
+loop = asyncio.get_event_loop()
+loop.run_until_complete(main(loop))
+print("all done")
+loop.close()
 
 print(f"took {time.time() - start} seconds")
