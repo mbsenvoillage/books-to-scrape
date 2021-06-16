@@ -46,6 +46,6 @@ def scrape(url: str):
 
 start = time.time()
 
-print(scrape(urlwithoutnext))
+print(scrape(cat_with_many_pages))
 
 print(f"took {time.time() - start} seconds")
