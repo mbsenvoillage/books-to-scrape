@@ -19,7 +19,7 @@ def get_page(url: str):
     else:
         return res
 
-def get_soup(url):
+async def get_soup(url):
     bs = ''
     try:
         res = get_page(url) #idle time

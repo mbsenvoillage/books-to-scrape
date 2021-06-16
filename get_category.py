@@ -28,17 +28,16 @@ def get_link(arr):
 
 #print(scrape_item_from_page(soup, '#default > div > div > div > div > section > div:nth-child(2) > ol > li > article > h3 > a', multi=True, process=lambda x: get_link(x)))
 
-async def next_page_url(url, starturl, myQueue):
+async def next_page_url(url, starturl, myQueue: asyncio.Queue):
     # arr.append(url)
-    await myQueue.put(url)
-    soup = get_soup(urlparse(url).geturl())
+    myQueue.put_nowait(url)
+    soup = await get_soup(urlparse(url).geturl())
     next_url = scrape_item_from_page(soup, '#default > div > div > div > div > section > div:nth-child(2) > div > ul > li.next > a', process=lambda x: get_next_page_url(x, starturl))
-    print(next_url)
     if next_url == 'Nothing found':
         return
-    return next_page_url(next_url, starturl, myQueue)
+    return await next_page_url(next_url, starturl, myQueue)
 
-async def scrape(myQueue):  
+async def scrape(myQueue: asyncio.Queue):  
     while True:
         # category_page_urls = next_page_url(url, [], url)
         # list_of_url = []
@@ -46,8 +45,9 @@ async def scrape(myQueue):
         url = await myQueue.get()
         if url is None:
             pass
-        soup = get_soup(url)
+        soup = await get_soup(url)
         print(scrape_item_from_page(soup, '#default > div > div > div > div > section > div:nth-child(2) > ol > li > article > h3 > a', multi=True, process=lambda x: get_link(x)))
+        myQueue.task_done()
         # list_of_url.extend(scrape_item_from_page(soup, '#default > div > div > div > div > section > div:nth-child(2) > ol > li > article > h3 > a', multi=True, process=lambda x: get_link(x)))
         # return list_of_url
 
@@ -55,13 +55,21 @@ start = time.time()
 
 # print(scrape(urlwithoutnext))
 
-async def main(loop):
-    myQueue = asyncio.Queue(loop=loop, maxsize=1000)
-    await asyncio.wait([next_page_url(cat_with_many_pages, cat_with_many_pages, myQueue), scrape(myQueue)]) 
+async def main():
+    myQueue = asyncio.Queue()
+    await next_page_url(cat_with_many_pages, cat_with_many_pages, myQueue)
+    tasks = []
+    for i in range(6):
+        task = asyncio.create_task(scrape(myQueue))
+        tasks.append(task)
+    await myQueue.join()
+    for task in tasks:
+        task.cancel()
+    # Wait until all worker tasks are cancelled.
+    await asyncio.gather(*tasks, return_exceptions=True)
 
-loop = asyncio.get_event_loop()
-loop.run_until_complete(main(loop))
+asyncio.run(main())
 print("all done")
-loop.close()
+
 
 print(f"took {time.time() - start} seconds")
