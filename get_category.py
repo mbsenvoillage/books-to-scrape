@@ -28,23 +28,6 @@ def get_link(arr):
 
 #print(scrape_item_from_page(soup, '#default > div > div > div > div > section > div:nth-child(2) > ol > li > article > h3 > a', multi=True, process=lambda x: get_link(x)))
 
-
-async def get_all_category_pages_url(url):
-    category_page_urls = []
-    category_page_urls.append(url)
-    soup = get_soup(url)
-    next_page_url = scrape_item_from_page(soup, '#default > div > div > div > div > section > div:nth-child(2) > div > ul > li.next > a', process=lambda x: get_next_page_url(x, url))
-    if next_page_url:
-        category_page_urls.append(next_page_url)
-        while next_page_url != 'Nothing found':
-            soup = get_soup(urlparse(next_page_url).geturl())
-            next_page_url = scrape_item_from_page(soup, '#default > div > div > div > div > section > div:nth-child(2) > div > ul > li.next > a', process=lambda x: get_next_page_url(x, url))
-            if next_page_url != 'Nothing found':
-                category_page_urls.append(next_page_url)
-    return category_page_urls
-
-#print(get_all_category_pages_url(urlwithnext))
-
 def next_page_url(url, arr: List, starturl):
     arr.append(url)
     soup = get_soup(urlparse(url).geturl())
@@ -63,6 +46,6 @@ def scrape(url: str):
 
 start = time.time()
 
-print(scrape(cat_with_many_pages))
+print(scrape(urlwithoutnext))
 
 print(f"took {time.time() - start} seconds")
