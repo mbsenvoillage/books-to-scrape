@@ -10,7 +10,7 @@ baseurl = 'http://books.toscrape.com/'
 def get_page(url: str):
     res = ''  
     try:
-        res = requests.get(url, timeout=2)
+        res = requests.get(url, timeout=2) #idle time
         res.raise_for_status()
         res = res.content
     except (HTTPError, ConnectionError, Timeout, RequestException) as e:
@@ -22,7 +22,7 @@ def get_page(url: str):
 def get_soup(url):
     bs = ''
     try:
-        res = get_page(url)
+        res = get_page(url) #idle time
     except Exception as e:
         raise
     else:
