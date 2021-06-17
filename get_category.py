@@ -1,3 +1,4 @@
+from asyncio.tasks import create_task
 from typing import List
 from urllib.parse import urlparse
 import logging
@@ -28,48 +29,42 @@ def get_link(arr):
 
 #print(scrape_item_from_page(soup, '#default > div > div > div > div > section > div:nth-child(2) > ol > li > article > h3 > a', multi=True, process=lambda x: get_link(x)))
 
-async def next_page_url(url, starturl, myQueue: asyncio.Queue):
-    # arr.append(url)
-    myQueue.put_nowait(url)
+async def produce_next_page_url(url, starturl, internalQueue: asyncio.Queue):
+    internalQueue.put_nowait(url)
+    print(internalQueue.qsize())
     soup = await get_soup(urlparse(url).geturl())
     next_url = scrape_item_from_page(soup, '#default > div > div > div > div > section > div:nth-child(2) > div > ul > li.next > a', process=lambda x: get_next_page_url(x, starturl))
     if next_url == 'Nothing found':
         return
-    return await next_page_url(next_url, starturl, myQueue)
+    return await produce_next_page_url(next_url, starturl, internalQueue)
 
-async def scrape(myQueue: asyncio.Queue):  
-    while True:
-        # category_page_urls = next_page_url(url, [], url)
-        # list_of_url = []
-        # for url in category_page_urls:
-        url = await myQueue.get()
+
+async def consume_next_page_url(internalQueue: asyncio.Queue, externalQueue: asyncio.Queue):  
+    while True: 
+        url = await internalQueue.get()
         if url is None:
             pass
         soup = await get_soup(url)
-        print(scrape_item_from_page(soup, '#default > div > div > div > div > section > div:nth-child(2) > ol > li > article > h3 > a', multi=True, process=lambda x: get_link(x)))
-        myQueue.task_done()
-        # list_of_url.extend(scrape_item_from_page(soup, '#default > div > div > div > div > section > div:nth-child(2) > ol > li > article > h3 > a', multi=True, process=lambda x: get_link(x)))
-        # return list_of_url
+        externalQueue.put_nowait(scrape_item_from_page(soup, '#default > div > div > div > div > section > div:nth-child(2) > ol > li > article > h3 > a', multi=True, process=lambda x: get_link(x)))
+        internalQueue.task_done()
+     
 
-start = time.time()
+# start = time.time()
 
-# print(scrape(urlwithoutnext))
+# print( consume_next_page_url(urlwithoutnext))
 
-async def main():
-    myQueue = asyncio.Queue()
-    await next_page_url(cat_with_many_pages, cat_with_many_pages, myQueue)
-    tasks = []
-    for i in range(6):
-        task = asyncio.create_task(scrape(myQueue))
-        tasks.append(task)
-    await myQueue.join()
-    for task in tasks:
-        task.cancel()
+async def scrape(url, externalQueue: asyncio.Queue):
+    internalQueue = asyncio.Queue()
+    producers = [asyncio.create_task(produce_next_page_url(url, url, internalQueue))]
+    consumers = [asyncio.create_task(consume_next_page_url(internalQueue, externalQueue)) for i in range(3)]
+    await asyncio.gather(*producers)
+    await internalQueue.join()
+    for c in consumers:
+        c.cancel()
     # Wait until all worker tasks are cancelled.
-    await asyncio.gather(*tasks, return_exceptions=True)
 
-asyncio.run(main())
-print("all done")
+# asyncio.run(scrape())
+# print("all done")
 
 
-print(f"took {time.time() - start} seconds")
+# print(f"took {time.time() - start} seconds")

@@ -1,6 +1,6 @@
 from urllib import error
 import logging
-
+import asyncio
 from requests.api import get
 from utils import get_soup, scrape_item_from_page, fieldnames, baseurl
 from file_writer import get_imgs_dir_path
@@ -47,16 +47,20 @@ def get_book_property(property_name, url, soup):
     return selectors[property_name]
 
 
-def scrape(url: str, ordered_property_names=fieldnames) -> object:  
+async def scrape(consumeQueue: asyncio.Queue, produceQueue, ordered_property_names=fieldnames) -> object:  
     scrape_dict = {}
     try:
-        soup = get_soup(url)
+        url = consumeQueue.get()
+        if url is None:
+            pass
+        soup = await get_soup(url)
         for property_name in ordered_property_names:
             scrape_dict[property_name] = get_book_property(property_name, url, soup)
     except Exception as e:
         logging.error(e)
         raise
-    return scrape_dict
+    consumeQueue.task_done()
+    produceQueue.put_nowait(scrape_dict)
 
 
 # print(scrape('https://books.toscrape.com/catalogue/a-light-in-the-attic_1000/index.html', fieldnames))

@@ -1,5 +1,6 @@
 from bs4 import BeautifulSoup
 import requests
+import httpx
 from requests.exceptions import HTTPError, ConnectionError, RequestException, Timeout
 import logging
 
@@ -7,12 +8,13 @@ fieldnames = ['url', 'title', 'product_description', 'category', 'review_rating'
 
 baseurl = 'http://books.toscrape.com/'
 
-def get_page(url: str):
+async def get_page(url: str):
     res = ''  
     try:
-        res = requests.get(url, timeout=2) #idle time
-        res.raise_for_status()
-        res = res.content
+        async with httpx.AsyncClient() as client:
+            res = await client.get(url, timeout=2) #idle time
+            res.raise_for_status()
+            res = res.content
     except (HTTPError, ConnectionError, Timeout, RequestException) as e:
         logging.error(e)
         raise
@@ -22,7 +24,7 @@ def get_page(url: str):
 async def get_soup(url):
     bs = ''
     try:
-        res = get_page(url) #idle time
+        res = await get_page(url) #idle time
     except Exception as e:
         raise
     else:
