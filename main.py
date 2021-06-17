@@ -33,18 +33,20 @@ async def write(queue):
         item = await queue.get()
         if item is None:
             pass
-        file_writer.write_file('books', 'w+', item)
+        # file_writer.write_file('books', 'w+', item)
+        print(item)
         queue.task_done()
 
 async def main():
     bookQueue = asyncio.Queue()
     try:
-        producers = [asyncio.create_task(scrape(bookQueue))]
-        consumers = [asyncio.create_task(write(bookQueue))]
-        await asyncio.gather(*producers)
-        await bookQueue.join()
-        for c in consumers:
-            c.cancel()
+        # producers = [asyncio.create_task(scrape(bookQueue))]
+        await scrape(bookQueue)
+        # consumers = [asyncio.create_task(write(bookQueue))]
+        # await asyncio.gather(*producers)
+        # await bookQueue.join()
+        # for c in consumers:
+        #     c.cancel()
     except Exception as e:
         print(e)
     else:

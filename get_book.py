@@ -50,17 +50,19 @@ def get_book_property(property_name, url, soup):
 async def scrape(consumeQueue: asyncio.Queue, produceQueue, ordered_property_names=fieldnames) -> object:  
     scrape_dict = {}
     try:
-        url = consumeQueue.get()
-        if url is None:
-            pass
-        soup = await get_soup(url)
-        for property_name in ordered_property_names:
-            scrape_dict[property_name] = get_book_property(property_name, url, soup)
+        urls = await consumeQueue.get()
+        for url in urls:
+            if url is None:
+                pass
+            soup = await get_soup(url)
+            for property_name in ordered_property_names:
+                scrape_dict[property_name] = get_book_property(property_name, url, soup)
     except Exception as e:
         logging.error(e)
         raise
+    # produceQueue.put_nowait(scrape_dict)
+    print(scrape_dict)
     consumeQueue.task_done()
-    produceQueue.put_nowait(scrape_dict)
 
 
 # print(scrape('https://books.toscrape.com/catalogue/a-light-in-the-attic_1000/index.html', fieldnames))
