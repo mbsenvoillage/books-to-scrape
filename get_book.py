@@ -47,16 +47,17 @@ def get_book_property(property_name, url, soup):
     return selectors[property_name]
 
 
-def scrape(url: str, ordered_property_names=fieldnames) -> object:  
+async def scrape(url: str, stock, ordered_property_names=fieldnames) -> object:  
     scrape_dict = {}
     try:
-        soup = get_soup(url)
+        soup = await get_soup(url)
         for property_name in ordered_property_names:
             scrape_dict[property_name] = get_book_property(property_name, url, soup)
     except Exception as e:
         logging.error(e)
         raise
-    return scrape_dict
+    # stock.append(scrape_dict)
+    await stock.put(scrape_dict)
 
 
 # print(scrape('https://books.toscrape.com/catalogue/a-light-in-the-attic_1000/index.html', fieldnames))

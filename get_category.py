@@ -17,73 +17,46 @@ urlwithoutnext = 'http://books.toscrape.com/catalogue/category/books/self-help_4
 cat_with_some_pages = 'http://books.toscrape.com/catalogue/category/books/nonfiction_13/index.html'
 cat_with_many_pages = 'http://books.toscrape.com/catalogue/category/books_1/index.html'
 
-def get_page_book_list(parsed_html: object):
-    return parsed_html.find('ol', {'class', 'row'})
-
-def get_next_page_url(parsed_html: object, url: str): 
-    return re.sub('[a-z]*.html', parsed_html['href'], url)
-
-
-def get_link(arr):
-    array = []
-    for el in arr:
-        array.append(el['href'].replace('../../../', baseurl))
-    return array
-
-#print(scrape_item_from_page(soup, '#default > div > div > div > div > section > div:nth-child(2) > ol > li > article > h3 > a', multi=True, process=lambda x: get_link(x)))
-
-async def next_page_url(url, arr: List, starturl):
-    arr.append(url)
-    soup = await get_soup(urlparse(url).geturl())
-    next_url = scrape_item_from_page(soup, '#default > div > div > div > div > section > div:nth-child(2) > div > ul > li.next > a', process=lambda x: get_next_page_url(x, starturl))
-    if next_url == 'Nothing found':
-        return arr
-    return await next_page_url(next_url, arr, starturl)
+def reformat_cat_page_url(url: str, index: int=None, parsed_html: object=None):
+    replace_with = parsed_html['href'] if index is None else f'page-{index}.html'
+    return re.sub('[a-z]*.html', replace_with, url)
+  
+def reformat_book_page_urls(arr: List):
+    """ Takes an array of shortened URLs from href tags, and returns a new array with full length URL"""
+    pattern = '../../../' if '../../../' in arr[0]['href'] else '../../'
+    return [el['href'].replace(pattern, baseurl) for el in arr]
 
 async def cat_page_url(url, starturl, stock):
     soup = await get_soup(urlparse(url).geturl())
-    next_url = scrape_item_from_page(soup, '#default > div > div > div > div > section > div:nth-child(2) > div > ul > li.next > a', process=lambda x: get_next_page_url(x, starturl))
-    if next_url == 'Nothing found':
-        return
-    stock.append(next_url)
-
-# async def scrape(url: str):  
-#     category_page_urls = await next_page_url(url, [], url)
-#     list_of_url = []
-#     for url in category_page_urls:
-#         soup = await get_soup(url)
-#         list_of_url.extend(scrape_item_from_page(soup, '#default > div > div > div > div > section > div:nth-child(2) > ol > li > article > h3 > a', multi=True, process=lambda x: get_link(x)))
-#     return list_of_url
-
+    next_url = scrape_item_from_page(soup, '#default > div > div > div > div > section > div:nth-child(2) > div > ul > li.next > a', process=lambda x: reformat_cat_page_url(starturl, None, x))
+    if next_url == 'Nothing found': return 
+    else: stock.append(next_url)
+        
 start = time.time()
 
 async def consumer(queue: asyncio.Queue, stock: List):
     while True:
         soup = await queue.get()
-        url = scrape_item_from_page(soup, '#default > div > div > div > div > section > div:nth-child(2) > ol > li > article > h3 > a', multi=True, process=lambda x: get_link(x))
+        url = scrape_item_from_page(soup, '#default > div > div > div > div > section > div:nth-child(2) > ol > li > article > h3 > a', multi=True, process=lambda x: reformat_book_page_urls(x))
         stock.extend(url)
         queue.task_done()
-        # return url
 
 async def producer(queue: asyncio.Queue, url):
     soup = await get_soup(url)
     await queue.put(soup)
-     
 
-async def scrape(url:string):
+def how_many_pages(soup):
+    num = math.floor(int(scrape_item_from_page(soup, '#default > div > div > div > div > form > strong'))/20)
+    return 1 if num < 1 else num
+
+async def scrape(url: str):
     queue = asyncio.Queue()
     stock = []
-    baseurl = 'http://books.toscrape.com/catalogue/category/books_1/index.html'
-    soup = await get_soup(baseurl)
-    num = math.floor(int(scrape_item_from_page(soup, '#default > div > div > div > div > form > strong'))/20)
-    length = 1 if num < 1 else num
-    tasks = []
-    urls = []
-    for i in range(length):
-        task = asyncio.create_task(cat_page_url(f'http://books.toscrape.com/catalogue/category/books_1/page-{i+1}.html', baseurl, urls))
-        tasks.append(task)
-    await gather(*tasks)
-    urls.append(baseurl)
+    length = how_many_pages(await get_soup(url))
+    urls = [url]
+    if (length > 1):
+        tasks = [asyncio.create_task(cat_page_url(reformat_cat_page_url(url, i+1), url, urls)) for i in range(length)]
+        await gather(*tasks)
     producers = [asyncio.create_task(producer(queue, url)) for url in urls]
     consumers = [asyncio.create_task(consumer(queue, stock)) for _ in range(10)]
     await asyncio.gather(*producers)
@@ -91,12 +64,12 @@ async def scrape(url:string):
     await queue.join()
     for c in consumers:
         c.cancel()
-    print(stock)
+    # print(stock)
+    return stock
+
+
+# asyncio.run(scrape(cat_with_some_pages))
+
+# print('../../../' in '../../../the-lonely-city-adventures-in-the-art-of-being-alone_639/index.html')
     
-  
-    
-
-asyncio.run(main())
-
-
 print(f"took {time.time() - start} seconds")

@@ -1,9 +1,8 @@
+from aiohttp.client_exceptions import ClientError
 from bs4 import BeautifulSoup
-import requests
-from requests.exceptions import HTTPError, ConnectionError, RequestException, Timeout
 import logging
 import aiohttp
-import asyncio
+from aiohttp.web import HTTPException
 
 fieldnames = ['url', 'title', 'product_description', 'category', 'review_rating', 'image_url', 'universal_product_code (upc)', 'price_excluding_tax', 'price_including_tax', 'number_available']
 
@@ -13,11 +12,12 @@ async def get_page(url: str):
     res = ''  
     try:
         async with aiohttp.ClientSession() as session:
-            res = await session.get(url, timeout=2)
+            res = await session.get(url)
             res.raise_for_status()
             content = await res.text()
-    except (HTTPError, ConnectionError, Timeout, RequestException) as e:
+    except (Exception, HTTPException, ClientError) as e:
         logging.error(e)
+        logging.error(f"something is wrong with url {url}")
         raise
     else:
         return content
