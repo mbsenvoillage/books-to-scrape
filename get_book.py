@@ -1,3 +1,4 @@
+import asyncio
 from urllib import error
 import logging
 
@@ -47,7 +48,7 @@ def get_book_property(property_name, url, soup):
     return selectors[property_name]
 
 
-async def scrape(url: str, stock, ordered_property_names=fieldnames) -> object:  
+async def scrape(url: str, bookQueue: asyncio.Queue, ordered_property_names=fieldnames) -> object:  
     scrape_dict = {}
     try:
         soup = await get_soup(url)
@@ -57,7 +58,8 @@ async def scrape(url: str, stock, ordered_property_names=fieldnames) -> object:
         logging.error(e)
         raise
     # stock.append(scrape_dict)
-    await stock.put(scrape_dict)
+    await bookQueue.put(scrape_dict)
+    print(f"bookQueue size {bookQueue.qsize()}")
 
 
 # print(scrape('https://books.toscrape.com/catalogue/a-light-in-the-attic_1000/index.html', fieldnames))

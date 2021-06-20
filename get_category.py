@@ -33,16 +33,18 @@ async def cat_page_url(url, starturl, queue: asyncio.Queue):
     if next_url == 'Nothing found': return 
     # else: stock.append(next_url)
     else:
-        await queue.put_nowait(next_url)
+        await queue.put(next_url)
     print(f'urlQueue size after put: {queue.qsize()}')
         
 start = time.time()
 
-async def consumer(queue: asyncio.Queue, stock: List):
+async def consumer(queue: asyncio.Queue, outerUrlQueue):
     """Retrieves the soup object of a category page from a queue, extracts all the book urls from that page and adds those URLs to an array provided as a dependency"""
     soup = await queue.get()
-    url = scrape_item_from_page(soup, '#default > div > div > div > div > section > div:nth-child(2) > ol > li > article > h3 > a', multi=True, process=lambda x: reformat_book_page_urls(x))
-    stock.extend(url)
+    urls = scrape_item_from_page(soup, '#default > div > div > div > div > section > div:nth-child(2) > ol > li > article > h3 > a', multi=True, process=lambda x: reformat_book_page_urls(x))
+    # stock.extend(url)
+    for url in urls:
+        await outerUrlQueue.put(url)
     print(f'soupQueue size after get: {queue.qsize()}')
     queue.task_done()
 
@@ -60,31 +62,30 @@ def how_many_pages(soup):
     num = math.floor(int(scrape_item_from_page(soup, '#default > div > div > div > div > form > strong'))/20)
     return 1 if num < 1 else num
 
-async def scrape(url: str):
+async def scrape(url: str, outerUrlQueue: asyncio.Queue):
     """Produces the URLs of all the books in a category"""
     soupQueue = asyncio.Queue()
     urlQueue = asyncio.Queue()
-    stock = []
     tasks = []
+    # stock = []
     length = how_many_pages(await get_soup(url))
     await urlQueue.put(url)
     if (length > 1):
         for i in range(length):
             task = asyncio.create_task(cat_page_url(reformat_cat_page_url(url, i+1), url, urlQueue))
             tasks.append(task)
-    
-    tasks.extend(asyncio.create_task(producer(soupQueue, urlQueue)) for _ in range(50))
-    tasks.extend(asyncio.create_task(consumer(soupQueue, stock)) for _ in range(50))  
-    await urlQueue.join()
+    tasks.extend(asyncio.create_task(producer(soupQueue, urlQueue)) for _ in range(500))
+    # tasks.extend(asyncio.create_task(consumer(soupQueue, stock)) for _ in range(100))  
+    tasks.extend(asyncio.create_task(consumer(soupQueue, outerUrlQueue)) for _ in range(500))  
     await soupQueue.join()
+    await urlQueue.join()
     for c in tasks:
         c.cancel()
     await gather(*tasks, return_exceptions=True)   
-    print(len(stock))
     # return stock
 
-
-asyncio.run(scrape(cat_with_many_pages))
+# s = []
+# asyncio.run(scrape(cat_with_many_pages, []))
 
 # print('../../../' in '../../../the-lonely-city-adventures-in-the-art-of-being-alone_639/index.html')
     

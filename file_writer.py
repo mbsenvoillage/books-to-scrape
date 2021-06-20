@@ -1,3 +1,4 @@
+import asyncio
 import csv
 import logging
 import os
@@ -7,15 +8,24 @@ from requests.exceptions import HTTPError, ConnectionError, RequestException, Ti
 from utils import fieldnames
 
 
-def write_file(filename, mode, array_of_books):
+def write_file(filename, mode, book):
+    try:
+        with open(f"{filename}.csv", encoding='utf-8-sig', mode=mode) as csv_file:
+            writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
+            writer.writerow(book)
+    except Exception as e:
+        logging.error(e)
+        raise
+
+def write_csv_header(filename, mode):
     try:
         with open(f"{filename}.csv", encoding='utf-8-sig', mode=mode) as csv_file:
             writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
             writer.writeheader()
-            writer.writerows(array_of_books)
     except Exception as e:
         logging.error(e)
         raise
+
 
 def create_image_folder(dirname):
     try:

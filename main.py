@@ -1,4 +1,6 @@
 import asyncio
+from asyncio.tasks import gather
+from typing import List
 import get_book
 import get_category
 import utils
@@ -16,15 +18,32 @@ if __name__ == '__main__':
 
 start = time.time()
 
+async def produce_books(urlQueue: asyncio.Queue, bookQueue: asyncio.Queue, task_array: List):
+    url = await urlQueue.get()
+    # task_array.append(asyncio.create_task(get_book.scrape(url, bookQueue)))
+    await get_book.scrape(url, bookQueue)
+    urlQueue.task_done()
+
+async def consume_books(bookQueue: asyncio.Queue):
+    book = await bookQueue.get()
+    file_writer.write_file('books', 'a+', book)
+    bookQueue.task_done()
+    print(f"consuming books. The size of the queue is: {bookQueue.qsize()}")
+
 async def main():
-    queue = asyncio.Queue()
+    file_writer.write_csv_header('books', 'w')
+    bookQueue = asyncio.Queue()
+    urlQueue = asyncio.Queue()
     try:
-        all_books_from_category = []
-        books_urls = await get_category.scrape(get_category.cat_with_many_pages)
-        tasks = [asyncio.create_task(get_book.scrape(book_url, queue)) for book_url in books_urls]
-        await asyncio.gather(*tasks)
-        # print(all_books_from_category)
-        # file_writer.write_file('books', 'w+', all_books_from_category)
+        tasks = []
+        await gather(get_category.scrape(get_category.cat_with_many_pages, urlQueue), return_exceptions=True)
+        tasks.extend(asyncio.create_task(produce_books(urlQueue, bookQueue, tasks))for _ in range(2000))
+        tasks.extend(asyncio.create_task(consume_books(bookQueue)) for _ in range(2000)) 
+        await urlQueue.join()  
+        await bookQueue.join()   
+        for task in tasks:
+            task.cancel()   
+        await gather(*tasks, return_exceptions=True)
     except Exception as e:
         logging.error(e)
         print("An error occurred")
