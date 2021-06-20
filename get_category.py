@@ -1,11 +1,7 @@
 from asyncio.tasks import gather
-from os import truncate
 from typing import List
 from urllib.parse import urlparse
-import logging
 import math
-
-from requests.api import get
 from utils import get_soup, scrape_item_from_page
 import re
 import time
@@ -18,6 +14,10 @@ cat_with_some_pages = 'http://books.toscrape.com/catalogue/category/books/nonfic
 cat_with_many_pages = 'http://books.toscrape.com/catalogue/category/books_1/index.html'
 
 def reformat_cat_page_url(url: str, index: int=None, parsed_html: object=None):
+    """
+    Takes a soup object from a category page, extracts the URL of the next category page, 
+    which comes in the form page-{number}.html, and produces a full length URL  
+    """
     replace_with = parsed_html['href'] if index is None else f'page-{index}.html'
     return re.sub('[a-z]*.html', replace_with, url)
   
@@ -26,49 +26,65 @@ def reformat_book_page_urls(arr: List):
     pattern = '../../../' if '../../../' in arr[0]['href'] else '../../'
     return [el['href'].replace(pattern, baseurl) for el in arr]
 
-async def cat_page_url(url, starturl, stock):
+async def cat_page_url(url, starturl, queue: asyncio.Queue):
+    """Takes the URL of a category page and returns the URL of the next category page, if there is one"""
     soup = await get_soup(urlparse(url).geturl())
     next_url = scrape_item_from_page(soup, '#default > div > div > div > div > section > div:nth-child(2) > div > ul > li.next > a', process=lambda x: reformat_cat_page_url(starturl, None, x))
     if next_url == 'Nothing found': return 
-    else: stock.append(next_url)
+    # else: stock.append(next_url)
+    else:
+        await queue.put_nowait(next_url)
+    print(f'urlQueue size after put: {queue.qsize()}')
         
 start = time.time()
 
 async def consumer(queue: asyncio.Queue, stock: List):
-    while True:
-        soup = await queue.get()
-        url = scrape_item_from_page(soup, '#default > div > div > div > div > section > div:nth-child(2) > ol > li > article > h3 > a', multi=True, process=lambda x: reformat_book_page_urls(x))
-        stock.extend(url)
-        queue.task_done()
+    """Retrieves the soup object of a category page from a queue, extracts all the book urls from that page and adds those URLs to an array provided as a dependency"""
+    soup = await queue.get()
+    url = scrape_item_from_page(soup, '#default > div > div > div > div > section > div:nth-child(2) > ol > li > article > h3 > a', multi=True, process=lambda x: reformat_book_page_urls(x))
+    stock.extend(url)
+    print(f'soupQueue size after get: {queue.qsize()}')
+    queue.task_done()
 
-async def producer(queue: asyncio.Queue, url):
+async def producer(outgoingQueue: asyncio.Queue, incomingQueue: asyncio.Queue):
+    """Retrieves the URL of a category page from an array and pushes the soup object of that page on another queue"""
+    url = await incomingQueue.get()
     soup = await get_soup(url)
-    await queue.put(soup)
+    print(f'length of urlQueue {incomingQueue.qsize()}')
+    await outgoingQueue.put(soup)
+    print(f'length of soupQueue {outgoingQueue.qsize()}')
+    incomingQueue.task_done()
+    
 
 def how_many_pages(soup):
     num = math.floor(int(scrape_item_from_page(soup, '#default > div > div > div > div > form > strong'))/20)
     return 1 if num < 1 else num
 
 async def scrape(url: str):
-    queue = asyncio.Queue()
+    """Produces the URLs of all the books in a category"""
+    soupQueue = asyncio.Queue()
+    urlQueue = asyncio.Queue()
     stock = []
+    tasks = []
     length = how_many_pages(await get_soup(url))
-    urls = [url]
+    await urlQueue.put(url)
     if (length > 1):
-        tasks = [asyncio.create_task(cat_page_url(reformat_cat_page_url(url, i+1), url, urls)) for i in range(length)]
-        await gather(*tasks)
-    producers = [asyncio.create_task(producer(queue, url)) for url in urls]
-    consumers = [asyncio.create_task(consumer(queue, stock)) for _ in range(10)]
-    await asyncio.gather(*producers)
-    print('done producing')  
-    await queue.join()
-    for c in consumers:
+        for i in range(length):
+            task = asyncio.create_task(cat_page_url(reformat_cat_page_url(url, i+1), url, urlQueue))
+            tasks.append(task)
+    
+    tasks.extend(asyncio.create_task(producer(soupQueue, urlQueue)) for _ in range(50))
+    tasks.extend(asyncio.create_task(consumer(soupQueue, stock)) for _ in range(50))  
+    await urlQueue.join()
+    await soupQueue.join()
+    for c in tasks:
         c.cancel()
-    # print(stock)
-    return stock
+    await gather(*tasks, return_exceptions=True)   
+    print(len(stock))
+    # return stock
 
 
-# asyncio.run(scrape(cat_with_some_pages))
+asyncio.run(scrape(cat_with_many_pages))
 
 # print('../../../' in '../../../the-lonely-city-adventures-in-the-art-of-being-alone_639/index.html')
     
