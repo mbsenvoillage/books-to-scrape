@@ -7,6 +7,9 @@ import utils
 import logging
 import file_writer
 import time
+import sys
+
+base = 'http://books.toscrape.com/'
 
 
 def init_logger():
@@ -14,6 +17,19 @@ def init_logger():
 
 if __name__ == '__main__':
     init_logger()
+
+args = sys.argv[1:]
+
+url = ''
+
+if (len(args) > 1):
+    print("This program only takes zero or one argument")
+    exit()
+elif (len(args) == 0):
+    url = 'http://books.toscrape.com/catalogue/category/books_1/index.html'
+else:
+    url = args[0]
+
 
 
 start = time.time()
@@ -27,28 +43,28 @@ async def consume_books(bookQueue: asyncio.Queue):
     book = await bookQueue.get()
     await file_writer.write_file('books', 'a+', book)
     bookQueue.task_done()
-    print(f"consuming books. The size of the queue is: {bookQueue.qsize()}")
+    # print(f"consuming books. The size of the queue is: {bookQueue.qsize()}")
 
 async def consume_image_urls(imageUrlQueue: asyncio.Queue):
     image_object = await imageUrlQueue.get()
     await file_writer.download_image(image_object['url'], image_object['filename'])
     imageUrlQueue.task_done()
-    print(f"consuming images. The size of the queue is: {imageUrlQueue.qsize()}")
+    # print(f"consuming images. The size of the queue is: {imageUrlQueue.qsize()}")
 
 
-async def main():
+async def main(url):
     file_writer.write_csv_header('books', 'w')
     bookQueue = asyncio.Queue()
     urlQueue = asyncio.Queue()
     imageQueue = asyncio.Queue()
     try:
         tasks = []
-        await gather(get_category.scrape(get_category.cat_with_many_pages, urlQueue), return_exceptions=True)
+        await gather(get_category.scrape(url, urlQueue, 500), return_exceptions=True)
         tasks.extend(asyncio.create_task(produce_books(urlQueue, bookQueue, imageQueue))for _ in range(2000))
-        tasks.extend(asyncio.create_task(consume_books(bookQueue)) for _ in range(2000)) 
-        tasks.extend(asyncio.create_task(consume_image_urls(imageQueue)) for _ in range(2000)) 
+        tasks.extend(asyncio.create_task(consume_books(bookQueue)) for _ in range(2000))   
+        tasks.extend(asyncio.create_task(consume_image_urls(imageQueue)) for _ in range(2000))   
         await urlQueue.join()  
-        await bookQueue.join() 
+        await bookQueue.join()
         await imageQueue.join()  
         for task in tasks:
             task.cancel()   
@@ -56,12 +72,11 @@ async def main():
     except Exception as e:
         logging.error(e)
         print("An error occurred")
+        exit()
     else:
         print("Scraping done")
 
 
-asyncio.run(main())
+asyncio.run(main(url))
 
 print(f"took {time.time() - start} seconds")
-
-'File:///Users/yvonmomboisse/Documents/Python/books-to-scrape/imgs/1774749f2cee292f.jpg'
