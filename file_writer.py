@@ -6,9 +6,11 @@ import requests
 import shutil
 from requests.exceptions import HTTPError, ConnectionError, RequestException, Timeout
 from utils import fieldnames
+import aiohttp
+import aiofiles
 
 
-def write_file(filename, mode, book):
+async def write_file(filename, mode, book):
     try:
         with open(f"{filename}.csv", encoding='utf-8-sig', mode=mode) as csv_file:
             writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
@@ -35,22 +37,19 @@ def create_image_folder(dirname):
         logging.error(e)
         raise
 
-def download_image(url, filename, dirname='imgs'):
+async def download_image(url, filename, dirname='imgs'):
     try:
-        response = requests.get(url, stream=True)
-    except (HTTPError, ConnectionError, Timeout, RequestException) as e:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url) as res:
+                if res.status == 200:
+                    create_image_folder(dirname)
+                    fileextension = url.split('.')[-1]
+                    async with aiofiles.open(f'{dirname}/{filename}.{fileextension}', 'wb') as img:
+                        await img.write(await res.read())
+    except Exception as e:
         logging.error(e)
+        logging.error(f"something is wrong with url {url}")
         raise
-    else:
-        fileextension = url.split('.')[-1]
-        try:
-            create_image_folder(dirname)
-            with open(f'{dirname}/{filename}.{fileextension}', 'wb') as img:
-                shutil.copyfileobj(response.raw, img)
-            del response
-        except OSError as e:
-            logging.error(e)
-            raise
 
 def get_imgs_dir_path(dirname='imgs') -> str:
     try:
@@ -60,6 +59,9 @@ def get_imgs_dir_path(dirname='imgs') -> str:
         raise
 
 
-url = 'https://books.toscrape.com/media/cache/fe/72/fe72f0532301ec28892ae79a629a293c.jpg'
+# url = 'https://books.toscrape.com/media/cache/fe/72/fe72f0532301ec28892ae79a629a293c.jpg'
 
-# download_image(url, 'test', 'imgs')
+# async def main():
+#     await download_image(url, 'test', 'imgs')
+
+# asyncio.run(main())

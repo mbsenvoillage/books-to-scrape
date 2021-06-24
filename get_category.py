@@ -33,12 +33,12 @@ async def cat_page_url(url, starturl, queue: asyncio.Queue):
     if next_url == 'Nothing found': return 
     # else: stock.append(next_url)
     else:
-        await queue.put(next_url)
+        await queue.put_nowait(next_url)
     print(f'urlQueue size after put: {queue.qsize()}')
         
 start = time.time()
 
-async def consumer(queue: asyncio.Queue, outerUrlQueue):
+async def consumer(queue: asyncio.Queue, outerUrlQueue: asyncio.Queue):
     """Retrieves the soup object of a category page from a queue, extracts all the book urls from that page and adds those URLs to an array provided as a dependency"""
     soup = await queue.get()
     urls = scrape_item_from_page(soup, '#default > div > div > div > div > section > div:nth-child(2) > ol > li > article > h3 > a', multi=True, process=lambda x: reformat_book_page_urls(x))
