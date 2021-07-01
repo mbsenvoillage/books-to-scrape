@@ -1,73 +1,59 @@
 import asyncio
 from asyncio.tasks import gather
-from typing import List
 import get_book
 import get_category
-import utils
 import logging
 import file_writer
 import time
 import sys
-
-base = 'http://books.toscrape.com/'
-
 
 def init_logger():
     logging.basicConfig(filename='app.log', format='%(asctime)s: Module: %(module)s / Function: %(funcName)s / Level: %(levelname)s => %(message)s')
 
 if __name__ == '__main__':
     init_logger()
-
-args = sys.argv[1:]
-
-url = ''
-
-if (len(args) > 1):
-    print("This program only takes zero or one argument")
-    exit()
-elif (len(args) == 0):
-    url = 'http://books.toscrape.com/catalogue/category/books_1/index.html'
-else:
-    if (args[0] == 'http://books.toscrape.com/'):
-        url = 'http://books.toscrape.com/catalogue/category/books_1/index.html'
-    else:
-        url = args[0]
+    if sys.version_info[0] == 3 and sys.version_info[1] >= 8 and sys.platform.startswith('win'):
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 
+url = 'http://books.toscrape.com/catalogue/category/books_1/index.html'
 
 start = time.time()
 
-async def produce_books(urlQueue: asyncio.Queue, bookQueue: asyncio.Queue, imageUrlQueue: asyncio.Queue):
-    url = await urlQueue.get()
-    await get_book.scrape(url, bookQueue, imageUrlQueue)
-    urlQueue.task_done()
+async def produce_books(url_queue: asyncio.Queue, book_queue: asyncio.Queue, imageurl_queue: asyncio.Queue):
+    """Gets book page url off the url_queue and scrapes the book page"""
+    url = await url_queue.get()
+    await get_book.scrape(url, book_queue, imageurl_queue)
+    url_queue.task_done()
 
-async def consume_books(bookQueue: asyncio.Queue):
-    book = await bookQueue.get()
+async def consume_books(book_queue: asyncio.Queue):
+    """Gets book dict off the book_queue and writes the book info to csv"""
+    book = await book_queue.get()
     cat = book['category']
     await file_writer.write_file(f'./csv/{cat}', 'a', book)
-    bookQueue.task_done()
+    book_queue.task_done()
 
-async def consume_image_urls(imageUrlQueue: asyncio.Queue, img_subfolfer):
-    image_object = await imageUrlQueue.get()
+async def consume_image_urls(imageurl_queue: asyncio.Queue, img_subfolfer):
+    """Gets image url off a queue and downloads the image"""
+    image_object = await imageurl_queue.get()
     await file_writer.download_image(image_object['url'], image_object['filename'], img_subfolfer)
-    imageUrlQueue.task_done()
+    imageurl_queue.task_done()
 
 
 async def main(url):
     file_writer.create_folder('csv')    
-    bookQueue = asyncio.Queue()
-    urlQueue = asyncio.Queue()
+    book_queue = asyncio.Queue()
+    url_queue = asyncio.Queue()
     imageQueue = asyncio.Queue()
     img_subfolder = '_'.join(time.ctime().split())
     try:
         tasks = []
-        await gather(get_category.scrape(url, urlQueue, 1000), return_exceptions=True)
-        tasks.extend(asyncio.create_task(produce_books(urlQueue, bookQueue, imageQueue))for _ in range(2000))
-        tasks.extend(asyncio.create_task(consume_books(bookQueue)) for _ in range(2000))   
+        await gather(get_category.scrape(url, url_queue, 1000), return_exceptions=True)
+        tasks.extend(asyncio.create_task(produce_books(url_queue, book_queue, imageQueue))for _ in range(2000))
+        tasks.extend(asyncio.create_task(consume_books(book_queue)) for _ in range(2000))   
         tasks.extend(asyncio.create_task(consume_image_urls(imageQueue, img_subfolder)) for _ in range(2000))   
-        await urlQueue.join()  
-        await bookQueue.join()
+        await url_queue.join()  
+        await book_queue.join()
         await imageQueue.join()  
         for task in tasks:
             task.cancel()   

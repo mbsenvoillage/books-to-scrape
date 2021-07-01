@@ -8,6 +8,7 @@ import aiofiles
 
 
 async def write_file(filename, mode, book):
+    """Writes book info to csv file"""
     try:
         with open(f"{filename}.csv", encoding='utf-8-sig', mode=mode) as csv_file:
             writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
@@ -17,16 +18,6 @@ async def write_file(filename, mode, book):
     except Exception as e:
         logging.error(e)
         raise
-
-def write_csv_header(filename, mode):
-    try:
-        with open(f"{filename}.csv", encoding='utf-8-sig', mode=mode) as csv_file:
-            writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
-            writer.writeheader()
-    except Exception as e:
-        logging.error(e)
-        raise
-
 
 def create_folder(dirname):
     try:
@@ -51,6 +42,7 @@ async def download_image(url, filename, subfolder, dirname='imgs'):
         raise
 
 def get_imgs_dir_path(dirname='imgs') -> str:
+    """Takes a directory name and returns the absolute path of that directory"""
     try:
         return os.path.abspath(dirname)
     except OSError as e:
