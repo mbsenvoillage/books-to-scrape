@@ -1,28 +1,31 @@
+from aiohttp.client_exceptions import ClientError
 from bs4 import BeautifulSoup
-import requests
-from requests.exceptions import HTTPError, ConnectionError, RequestException, Timeout
 import logging
+import aiohttp
+from aiohttp.web import HTTPException
 
 fieldnames = ['url', 'title', 'product_description', 'category', 'review_rating', 'image_url', 'universal_product_code (upc)', 'price_excluding_tax', 'price_including_tax', 'number_available']
 
 baseurl = 'http://books.toscrape.com/'
 
-def get_page(url: str):
+async def get_page(url: str):
     res = ''  
     try:
-        res = requests.get(url, timeout=2) #idle time
-        res.raise_for_status()
-        res = res.content
-    except (HTTPError, ConnectionError, Timeout, RequestException) as e:
+        async with aiohttp.ClientSession() as session:
+            res = await session.get(url)
+            res.raise_for_status()
+            content = await res.text()
+    except (Exception, HTTPException, ClientError) as e:
         logging.error(e)
+        logging.error(f"something is wrong with url {url}")
         raise
     else:
-        return res
+        return content
 
-def get_soup(url):
+async def get_soup(url):
     bs = ''
     try:
-        res = get_page(url) #idle time
+        res = await get_page(url) #idle time
     except Exception as e:
         raise
     else:
