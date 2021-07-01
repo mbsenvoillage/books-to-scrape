@@ -22,11 +22,6 @@ def reformat_cat_page_url(url: str, index: int=None, parsed_html: object=None):
     replace_with = parsed_html['href'] if index is None else f'page-{index}.html'
     return re.sub('[a-z]*.html', replace_with, url)
 
-# async def test():
-#     soup = await get_soup('http://books.toscrape.com/index.html')
-#     print(reformat_cat_page_url('http://books.toscrape.com/index.html', 1))
-# asyncio.run(test())
-  
 def reformat_book_page_urls(arr: List):
     """ Takes an array of shortened URLs from href tags, and returns a new array with full length URL"""
     href = arr[0]['href']
@@ -49,12 +44,10 @@ async def cat_page_url(url, starturl, queue: asyncio.Queue):
 async def consumer(queue: asyncio.Queue, outerUrlQueue: asyncio.Queue):
     """Retrieves the soup object of a category page from a queue, extracts all the book urls from that page and adds those URLs to an array provided as a dependency"""
     soup = await queue.get()
-    urls = scrape_item_from_page(soup, '#default > div > div > div > div > section > div:nth-child(2) > ol > li > article > h3 > a', multi=True, process=lambda x: reformat_book_page_urls(x))
-    
+    urls = scrape_item_from_page(soup, '#default > div > div > div > div > section > div:nth-child(2) > ol > li > article > h3 > a', multi=True, process=lambda x: reformat_book_page_urls(x))   
     for url in urls:
         await outerUrlQueue.put(url)
     queue.task_done()
-    # print(f"urlQueue size {outerUrlQueue.qsize()}")
 
 
 async def producer(outgoingQueue: asyncio.Queue, incomingQueue: asyncio.Queue):
@@ -79,12 +72,9 @@ async def scrape(url: str, outerUrlQueue: asyncio.Queue, number_of_books):
     if (length > 1):
         for i in range(length):
             task = asyncio.create_task(cat_page_url(reformat_cat_page_url(url, i+1), url, urlQueue))
-            tasks.append(task)
-        
-   
+            tasks.append(task) 
     tasks.extend(asyncio.create_task(producer(soupQueue, urlQueue)) for _ in range(number_of_books))
-    tasks.extend(asyncio.create_task(consumer(soupQueue, outerUrlQueue)) for _ in range(number_of_books))  
-    
+    tasks.extend(asyncio.create_task(consumer(soupQueue, outerUrlQueue)) for _ in range(number_of_books))     
     await soupQueue.join()
     await urlQueue.join()
     for c in tasks:

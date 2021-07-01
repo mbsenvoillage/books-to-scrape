@@ -11,6 +11,8 @@ async def write_file(filename, mode, book):
     try:
         with open(f"{filename}.csv", encoding='utf-8-sig', mode=mode) as csv_file:
             writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
+            if csv_file.tell() == 0:
+                writer.writeheader()
             writer.writerow(book)
     except Exception as e:
         logging.error(e)
@@ -26,7 +28,7 @@ def write_csv_header(filename, mode):
         raise
 
 
-def create_image_folder(dirname):
+def create_folder(dirname):
     try:
         if not os.path.exists(dirname):
             os.makedirs(dirname)  
@@ -39,7 +41,7 @@ async def download_image(url, filename, subfolder, dirname='imgs'):
         async with aiohttp.ClientSession() as session:
             async with session.get(url) as res:
                 if res.status == 200:
-                    create_image_folder(dirname + '/' + subfolder)
+                    create_folder(dirname + '/' + subfolder)
                     fileextension = url.split('.')[-1]
                     async with aiofiles.open(f'{dirname}/{subfolder}/{filename}.{fileextension}', 'wb') as img:
                         await img.write(await res.read())

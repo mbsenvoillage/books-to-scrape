@@ -60,6 +60,3 @@ async def scrape(url: str, bookQueue: asyncio.Queue, imageUrlQueue: asyncio.Queu
         logging.error(e)
         raise
     await bookQueue.put(scrape_dict)
-
-
-# asyncio.run(scrape('https://books.toscrape.com/catalogue/a-light-in-the-attic_1000/index.html', fieldnames))
