@@ -1,10 +1,7 @@
-import asyncio
 import csv
 import logging
 import os
-import requests
-import shutil
-from requests.exceptions import HTTPError, ConnectionError, RequestException, Timeout
+import time
 from utils import fieldnames
 import aiohttp
 import aiofiles
@@ -14,6 +11,8 @@ async def write_file(filename, mode, book):
     try:
         with open(f"{filename}.csv", encoding='utf-8-sig', mode=mode) as csv_file:
             writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
+            if csv_file.tell() == 0:
+                writer.writeheader()
             writer.writerow(book)
     except Exception as e:
         logging.error(e)
@@ -29,7 +28,7 @@ def write_csv_header(filename, mode):
         raise
 
 
-def create_image_folder(dirname):
+def create_folder(dirname):
     try:
         if not os.path.exists(dirname):
             os.makedirs(dirname)  
@@ -37,14 +36,14 @@ def create_image_folder(dirname):
         logging.error(e)
         raise
 
-async def download_image(url, filename, dirname='imgs'):
+async def download_image(url, filename, subfolder, dirname='imgs'):
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(url) as res:
                 if res.status == 200:
-                    create_image_folder(dirname)
+                    create_folder(dirname + '/' + subfolder)
                     fileextension = url.split('.')[-1]
-                    async with aiofiles.open(f'{dirname}/{filename}.{fileextension}', 'wb') as img:
+                    async with aiofiles.open(f'{dirname}/{subfolder}/{filename}.{fileextension}', 'wb') as img:
                         await img.write(await res.read())
     except Exception as e:
         logging.error(e)
@@ -57,11 +56,3 @@ def get_imgs_dir_path(dirname='imgs') -> str:
     except OSError as e:
         logging.error(e)
         raise
-
-
-# url = 'https://books.toscrape.com/media/cache/fe/72/fe72f0532301ec28892ae79a629a293c.jpg'
-
-# async def main():
-#     await download_image(url, 'test', 'imgs')
-
-# asyncio.run(main())

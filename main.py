@@ -28,7 +28,10 @@ if (len(args) > 1):
 elif (len(args) == 0):
     url = 'http://books.toscrape.com/catalogue/category/books_1/index.html'
 else:
-    url = args[0]
+    if (args[0] == 'http://books.toscrape.com/'):
+        url = 'http://books.toscrape.com/catalogue/category/books_1/index.html'
+    else:
+        url = args[0]
 
 
 
@@ -41,28 +44,28 @@ async def produce_books(urlQueue: asyncio.Queue, bookQueue: asyncio.Queue, image
 
 async def consume_books(bookQueue: asyncio.Queue):
     book = await bookQueue.get()
-    await file_writer.write_file('books', 'a+', book)
+    cat = book['category']
+    await file_writer.write_file(f'./csv/{cat}', 'a', book)
     bookQueue.task_done()
-    # print(f"consuming books. The size of the queue is: {bookQueue.qsize()}")
 
-async def consume_image_urls(imageUrlQueue: asyncio.Queue):
+async def consume_image_urls(imageUrlQueue: asyncio.Queue, img_subfolfer):
     image_object = await imageUrlQueue.get()
-    await file_writer.download_image(image_object['url'], image_object['filename'])
+    await file_writer.download_image(image_object['url'], image_object['filename'], img_subfolfer)
     imageUrlQueue.task_done()
-    # print(f"consuming images. The size of the queue is: {imageUrlQueue.qsize()}")
 
 
 async def main(url):
-    file_writer.write_csv_header('books', 'w')
+    file_writer.create_folder('csv')    
     bookQueue = asyncio.Queue()
     urlQueue = asyncio.Queue()
     imageQueue = asyncio.Queue()
+    img_subfolder = '_'.join(time.ctime().split())
     try:
         tasks = []
-        await gather(get_category.scrape(url, urlQueue, 500), return_exceptions=True)
+        await gather(get_category.scrape(url, urlQueue, 1000), return_exceptions=True)
         tasks.extend(asyncio.create_task(produce_books(urlQueue, bookQueue, imageQueue))for _ in range(2000))
         tasks.extend(asyncio.create_task(consume_books(bookQueue)) for _ in range(2000))   
-        tasks.extend(asyncio.create_task(consume_image_urls(imageQueue)) for _ in range(2000))   
+        tasks.extend(asyncio.create_task(consume_image_urls(imageQueue, img_subfolder)) for _ in range(2000))   
         await urlQueue.join()  
         await bookQueue.join()
         await imageQueue.join()  
