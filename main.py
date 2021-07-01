@@ -44,7 +44,7 @@ async def produce_books(urlQueue: asyncio.Queue, bookQueue: asyncio.Queue, image
 
 async def consume_books(bookQueue: asyncio.Queue):
     book = await bookQueue.get()
-    await file_writer.write_file('books', 'a+', book)
+    await file_writer.write_file(book['category'], 'a+', book)
     bookQueue.task_done()
 
 async def consume_image_urls(imageUrlQueue: asyncio.Queue, img_subfolfer):

@@ -59,9 +59,7 @@ async def scrape(url: str, bookQueue: asyncio.Queue, imageUrlQueue: asyncio.Queu
     except Exception as e:
         logging.error(e)
         raise
-    # stock.append(scrape_dict)
     await bookQueue.put(scrape_dict)
-    print(f"bookQueue size {bookQueue.qsize()}")
 
 
 # asyncio.run(scrape('https://books.toscrape.com/catalogue/a-light-in-the-attic_1000/index.html', fieldnames))
