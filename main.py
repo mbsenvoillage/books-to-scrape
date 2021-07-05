@@ -1,5 +1,6 @@
 import asyncio
 from asyncio.tasks import gather
+import re
 import get_book
 import get_category
 import logging
@@ -44,17 +45,17 @@ async def main(url):
     file_writer.create_folder('csv')    
     book_queue = asyncio.Queue()
     url_queue = asyncio.Queue()
-    imageQueue = asyncio.Queue()
+    image_queue = asyncio.Queue()
     img_subfolder = '_'.join(time.ctime().split())
     try:
         tasks = []
         await gather(get_category.scrape(url, url_queue, 1000), return_exceptions=True)
-        tasks.extend(asyncio.create_task(produce_books(url_queue, book_queue, imageQueue))for _ in range(2000))
+        tasks.extend(asyncio.create_task(produce_books(url_queue, book_queue, image_queue))for _ in range(2000))
         tasks.extend(asyncio.create_task(consume_books(book_queue)) for _ in range(2000))   
-        tasks.extend(asyncio.create_task(consume_image_urls(imageQueue, img_subfolder)) for _ in range(2000))   
+        tasks.extend(asyncio.create_task(consume_image_urls(image_queue, img_subfolder)) for _ in range(2000))   
         await url_queue.join()  
         await book_queue.join()
-        await imageQueue.join()  
+        await image_queue.join()  
         for task in tasks:
             task.cancel()   
         await gather(*tasks, return_exceptions=True)

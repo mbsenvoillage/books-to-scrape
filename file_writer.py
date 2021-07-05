@@ -1,7 +1,6 @@
 import csv
 import logging
 import os
-import time
 from utils import fieldnames
 import aiohttp
 import aiofiles
@@ -20,12 +19,9 @@ async def write_file(filename, mode, book):
         raise
 
 def create_folder(dirname):
-    try:
-        if not os.path.exists(dirname):
-            os.makedirs(dirname)  
-    except OSError as e:
-        logging.error(e)
-        raise
+    if not os.path.exists(dirname):
+        os.makedirs(dirname)  
+
 
 async def download_image(url, filename, subfolder, dirname='imgs'):
     try:
@@ -33,8 +29,7 @@ async def download_image(url, filename, subfolder, dirname='imgs'):
             async with session.get(url) as res:
                 if res.status == 200:
                     create_folder(dirname + '/' + subfolder)
-                    fileextension = url.split('.')[-1]
-                    async with aiofiles.open(f'{dirname}/{subfolder}/{filename}.{fileextension}', 'wb') as img:
+                    async with aiofiles.open(f'{dirname}/{subfolder}/{filename}', 'wb') as img:
                         await img.write(await res.read())
     except Exception as e:
         logging.error(e)

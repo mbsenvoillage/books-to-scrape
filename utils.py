@@ -7,6 +7,7 @@ from aiohttp.web import HTTPException
 fieldnames = ['url', 'title', 'product_description', 'category', 'review_rating', 'image_url', 'universal_product_code (upc)', 'price_excluding_tax', 'price_including_tax', 'number_available']
 
 baseurl = 'http://books.toscrape.com/'
+media_path = 'http://books.toscrape.com/media/cache'
 
 async def get_page(url: str):
     res = ''  

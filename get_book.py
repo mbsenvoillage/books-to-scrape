@@ -1,24 +1,18 @@
 import asyncio
-from urllib import error
 import logging
-
-from requests.api import get
 from utils import get_soup, scrape_item_from_page, fieldnames, baseurl
 from file_writer import get_imgs_dir_path
+import re
 
 def get_rating(string) -> str:
     ratings = ['one', 'two', 'three', 'four', 'five']
     num_of_stars = string['class'][1].lower()       
     return str(ratings.index(num_of_stars)+1)
 
-def get_number_available(string): 
-    num = ''
-    for character in string:
-        if character.isdigit():
-            num += character
-    return num
+# def get_number_available(string): 
+#     return re.findall(r'\d+',string)[0]
 
-def get_img_file_path(url, upc, file_data):
+def assemble_image_local_file_path(url, upc, file_data):
     if '../../' not in url:
         return 'Image could not be downloaded'
     else:
@@ -40,11 +34,11 @@ async def get_book_property(property_name, url, soup, file_data):
         'product_description' : scrape_item_from_page(soup, '#content_inner > article > p'),
         'category': scrape_item_from_page(soup, '#default > div > div > ul > li:nth-child(3) > a'),
         'review_rating' : scrape_item_from_page(soup, '#content_inner > article > div.row > div.col-sm-6.product_main > p.star-rating', process=lambda x: get_rating(x)),
-        'image_url': get_img_file_path(scrape_item_from_page(soup, '#product_gallery > div > div > div > img', process=lambda x: x['src']), scrape_item_from_page(soup, 'table tr:nth-child(1) > td'), file_data),
+        'image_url': assemble_image_local_file_path(scrape_item_from_page(soup, '#product_gallery > div > div > div > img', process=lambda x: x['src']), scrape_item_from_page(soup, 'table tr:nth-child(1) > td'), file_data),
         'universal_product_code (upc)': scrape_item_from_page(soup, 'table tr:nth-child(1) > td'),
         'price_excluding_tax': scrape_item_from_page(soup, 'table tr:nth-child(3) > td'),
         'price_including_tax': scrape_item_from_page(soup, 'table tr:nth-child(4) > td'),
-        'number_available': scrape_item_from_page(soup, 'table tr:nth-child(6) > td', process=lambda x: get_number_available(x.text))}
+        'number_available': scrape_item_from_page(soup, 'table tr:nth-child(6) > td', process=lambda x: re.findall(r'\d+',x.text)[0])}
     return selectors[property_name]
 
 
