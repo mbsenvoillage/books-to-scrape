@@ -1,14 +1,14 @@
 from aiohttp.client_exceptions import ClientError
 from bs4 import BeautifulSoup
-import logging
-import aiohttp
+import logging, aiohttp, os
 from aiohttp.web import HTTPException
+from dotenv import load_dotenv
 
-fieldnames = ['url', 'title', 'product_description', 'category', 'review_rating', 'image_url', 'universal_product_code (upc)', 'price_excluding_tax', 'price_including_tax', 'number_available']
-
-baseurl = 'http://books.toscrape.com/'
+load_dotenv()
+fieldnames = os.getenv('FIELDNAMES')
 
 async def get_page(url: str):
+    """Takes URL as parameter and returns the response object from request"""
     res = ''  
     try:
         async with aiohttp.ClientSession() as session:
@@ -22,10 +22,11 @@ async def get_page(url: str):
     else:
         return content
 
-async def get_soup(url):
+async def get_soup(url: str):
+    """Takes URL as parameter and returns a BeautifulSoup object"""
     bs = ''
     try:
-        res = await get_page(url) #idle time
+        res = await get_page(url) 
     except Exception as e:
         raise
     else:
@@ -42,6 +43,7 @@ async def get_soup(url):
 
 
 def scrape_item_from_page(soup, selector, multi=False, process=lambda x: x.text, default="Nothing found"):
+    """Takes a BS object, a CSS selector, a boolean, a function and a string as parameters and returns an element scraped off the webpage corresponding to the BS object"""
     item = ''
     try:
         bs = soup.select(selector) if multi else soup.select_one(selector)

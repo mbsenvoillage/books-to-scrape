@@ -1,13 +1,12 @@
-import csv
-import logging
-import os
-import time
-from utils import fieldnames
-import aiohttp
-import aiofiles
+import csv, logging, os, aiohttp, aiofiles
+from dotenv import load_dotenv
 
+load_dotenv()
+
+fieldnames = os.getenv('FIELDNAMES').split(',')
 
 async def write_file(filename, mode, book):
+    """Writes book info to csv file"""
     try:
         with open(f"{filename}.csv", encoding='utf-8-sig', mode=mode) as csv_file:
             writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
@@ -18,23 +17,10 @@ async def write_file(filename, mode, book):
         logging.error(e)
         raise
 
-def write_csv_header(filename, mode):
-    try:
-        with open(f"{filename}.csv", encoding='utf-8-sig', mode=mode) as csv_file:
-            writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
-            writer.writeheader()
-    except Exception as e:
-        logging.error(e)
-        raise
-
-
 def create_folder(dirname):
-    try:
-        if not os.path.exists(dirname):
-            os.makedirs(dirname)  
-    except OSError as e:
-        logging.error(e)
-        raise
+    if not os.path.exists(dirname):
+        os.makedirs(dirname)  
+
 
 async def download_image(url, filename, subfolder, dirname='imgs'):
     try:
@@ -42,8 +28,7 @@ async def download_image(url, filename, subfolder, dirname='imgs'):
             async with session.get(url) as res:
                 if res.status == 200:
                     create_folder(dirname + '/' + subfolder)
-                    fileextension = url.split('.')[-1]
-                    async with aiofiles.open(f'{dirname}/{subfolder}/{filename}.{fileextension}', 'wb') as img:
+                    async with aiofiles.open(f'{dirname}/{subfolder}/{filename}', 'wb') as img:
                         await img.write(await res.read())
     except Exception as e:
         logging.error(e)
@@ -51,6 +36,7 @@ async def download_image(url, filename, subfolder, dirname='imgs'):
         raise
 
 def get_imgs_dir_path(dirname='imgs') -> str:
+    """Takes a directory name and returns the absolute path of that directory"""
     try:
         return os.path.abspath(dirname)
     except OSError as e:
