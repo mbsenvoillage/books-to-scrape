@@ -1,12 +1,6 @@
-import asyncio
 from asyncio.tasks import gather
-import re
-import get_book
-import get_category
-import logging
-import file_writer
-import time
-import sys
+import get_book, get_category, logging, file_writer, time, sys, asyncio, os
+from dotenv import load_dotenv
 
 def init_logger():
     logging.basicConfig(filename='app.log', format='%(asctime)s: Module: %(module)s / Function: %(funcName)s / Level: %(levelname)s => %(message)s')
@@ -15,9 +9,10 @@ if __name__ == '__main__':
     init_logger()
     if sys.version_info[0] == 3 and sys.version_info[1] >= 8 and sys.platform.startswith('win'):
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+    load_dotenv()
 
 
-url = 'http://books.toscrape.com/catalogue/category/books_1/index.html'
+url = os.getenv('DEFAULT_SCRAPING_URL')
 
 start = time.time()
 

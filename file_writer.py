@@ -1,10 +1,9 @@
-import csv
-import logging
-import os
-from utils import fieldnames
-import aiohttp
-import aiofiles
+import csv, logging, os, aiohttp, aiofiles
+from dotenv import load_dotenv
 
+load_dotenv()
+
+fieldnames = os.getenv('FIELDNAMES').split(',')
 
 async def write_file(filename, mode, book):
     """Writes book info to csv file"""

@@ -1,18 +1,14 @@
 from asyncio.tasks import gather
 from typing import List
 from urllib.parse import urlparse
-import math
+import math, re, asyncio, os
 from utils import get_soup, scrape_item_from_page
-import re
-import time
-import asyncio
+from dotenv import load_dotenv
 
-baseurl = 'http://books.toscrape.com/'
-catalogue = 'http://books.toscrape.com/catalogue/'
-urlwithnext= 'http://books.toscrape.com/catalogue/category/books/childrens_11/index.html'
-urlwithoutnext = 'http://books.toscrape.com/catalogue/category/books/self-help_41/index.html'
-cat_with_some_pages = 'http://books.toscrape.com/catalogue/category/books/nonfiction_13/index.html'
-cat_with_many_pages = 'http://books.toscrape.com/catalogue/category/books_1/index.html'
+load_dotenv()
+
+baseurl = os.getenv('BASE_URL')
+catalogue = os.getenv('CATALOGUE')
 
 def reformat_cat_page_url(url: str, index: int=None, parsed_html: object=None):
     """
@@ -59,6 +55,7 @@ async def producer(outgoingQueue: asyncio.Queue, incomingQueue: asyncio.Queue):
     
     
 def how_many_pages(soup):
+    """Calculates the number of pages in a category. Takes BS object as param"""
     num = math.floor(int(scrape_item_from_page(soup, '#default > div > div > div > div > form > strong'))/20)
     return 1 if num < 1 else num
 

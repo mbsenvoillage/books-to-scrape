@@ -1,18 +1,20 @@
-import asyncio
-import logging
-from utils import get_soup, scrape_item_from_page, fieldnames, baseurl
+import asyncio, logging, re, os
+from utils import get_soup, scrape_item_from_page
 from file_writer import get_imgs_dir_path
-import re
+from dotenv import load_dotenv
+
+load_dotenv()
+
+fieldnames = os.getenv('FIELDNAMES').split(',')
+print(fieldnames)
+baseurl = os.getenv('BASE_URL')
 
 def get_rating(string) -> str:
     ratings = ['one', 'two', 'three', 'four', 'five']
     num_of_stars = string['class'][1].lower()       
     return str(ratings.index(num_of_stars)+1)
 
-# def get_number_available(string): 
-#     return re.findall(r'\d+',string)[0]
-
-def assemble_image_local_file_path(url, upc, file_data):
+def assemble_image_local_file_path(url, upc, file_data) -> str:
     if '../../' not in url:
         return 'Image could not be downloaded'
     else:
@@ -27,7 +29,8 @@ def assemble_image_local_file_path(url, upc, file_data):
         return 'An error occurred'
 
 
-async def get_book_property(property_name, url, soup, file_data):
+async def get_book_property(property_name, url, soup, file_data)-> str:
+    """Takes a book property as parameter and returns a string containing the queried book property (scrapes elements from book page)"""
     selectors = {
         'url': url,
         'title' : scrape_item_from_page(soup, 'h1'),
@@ -42,15 +45,15 @@ async def get_book_property(property_name, url, soup, file_data):
     return selectors[property_name]
 
 
-async def scrape(url: str, bookQueue: asyncio.Queue, imageUrlQueue: asyncio.Queue, ordered_property_names=fieldnames) -> object:  
+async def scrape(url: str, book_queue: asyncio.Queue, image_url_queue: asyncio.Queue, ordered_property_names=fieldnames) -> object:  
     scrape_dict = {}
     file_data = []
     try:
         soup = await get_soup(url)
         for property_name in ordered_property_names:
             scrape_dict[property_name] = await get_book_property(property_name, url, soup, file_data)
-        await imageUrlQueue.put(file_data[0])
+        await image_url_queue.put(file_data[0])
     except Exception as e:
         logging.error(e)
         raise
-    await bookQueue.put(scrape_dict)
+    await book_queue.put(scrape_dict)
