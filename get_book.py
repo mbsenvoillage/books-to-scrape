@@ -6,7 +6,6 @@ from dotenv import load_dotenv
 load_dotenv()
 
 fieldnames = os.getenv('FIELDNAMES').split(',')
-print(fieldnames)
 baseurl = os.getenv('BASE_URL')
 
 def get_rating(string) -> str:
@@ -14,19 +13,17 @@ def get_rating(string) -> str:
     num_of_stars = string['class'][1].lower()       
     return str(ratings.index(num_of_stars)+1)
 
-def assemble_image_local_file_path(url, upc, file_data) -> str:
-    if '../../' not in url:
-        return 'Image could not be downloaded'
-    else:
-        full_url = url.replace('../../', baseurl)
-        try:
-            file_extension = full_url.split('.')[-1]
-            filename = f"/{upc}.{file_extension}"
-            file_data .append({'url': full_url, 'filename': filename})
-            return 'file://' + get_imgs_dir_path() + filename
-        except Exception as e:
-            logging.error(e)
-        return 'An error occurred'
+def assemble_image_local_file_path(url: str, upc, file_data) -> str:
+    """Generates a local file path for a downloaded picture"""
+    full_url = baseurl + url.split('../')[-1]
+    try:
+        file_extension = full_url.split('.')[-1]
+        filename = f"/{upc}.{file_extension}"
+        file_data.append({'url': full_url, 'filename': filename})
+        return 'file://' + get_imgs_dir_path() + filename
+    except Exception as e:
+        logging.error(e)
+    return 'An error occurred'
 
 
 async def get_book_property(property_name, url, soup, file_data)-> str:
@@ -46,6 +43,7 @@ async def get_book_property(property_name, url, soup, file_data)-> str:
 
 
 async def scrape(url: str, book_queue: asyncio.Queue, image_url_queue: asyncio.Queue, ordered_property_names=fieldnames) -> object:  
+    """Scrapes required information from a book page. Pushes book dict and image url to asyncio queues"""
     scrape_dict = {}
     file_data = []
     try:

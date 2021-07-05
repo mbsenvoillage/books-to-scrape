@@ -20,14 +20,7 @@ def reformat_cat_page_url(url: str, index: int=None, parsed_html: object=None):
 
 def reformat_book_page_urls(arr: List):
     """ Takes an array of shortened URLs from href tags, and returns a new array with full length URL"""
-    href = arr[0]['href']
-    if ('../../../' in href):
-        pattern = '../../../'
-    elif ('../../' in href):
-        pattern = '../../'
-    else:
-        return [baseurl+el['href'] for el in arr]
-    return [el['href'].replace(pattern, catalogue) for el in arr]
+    return [catalogue + el['href'].split('../')[-1] for el in arr]
 
 async def cat_page_url(url, starturl, queue: asyncio.Queue):
     """Takes the URL of a category page and returns the URL of the next category page, if there is one"""
@@ -60,7 +53,7 @@ def how_many_pages(soup):
     return 1 if num < 1 else num
 
 async def scrape(url: str, outerurl_queue: asyncio.Queue, number_of_books):
-    """Produces the URLs of all the books in a category"""
+    """Produces the URLs of all the books in a category. Pushes book page urls to an asyncio queue"""
     soup_queue = asyncio.Queue()
     url_queue = asyncio.Queue()
     tasks = []
@@ -77,5 +70,3 @@ async def scrape(url: str, outerurl_queue: asyncio.Queue, number_of_books):
     for c in tasks:
         c.cancel()
     await gather(*tasks, return_exceptions=True)      
-
-

@@ -45,9 +45,9 @@ async def main(url):
     try:
         tasks = []
         await gather(get_category.scrape(url, url_queue, 1000), return_exceptions=True)
-        tasks.extend(asyncio.create_task(produce_books(url_queue, book_queue, image_queue))for _ in range(2000))
-        tasks.extend(asyncio.create_task(consume_books(book_queue)) for _ in range(2000))   
-        tasks.extend(asyncio.create_task(consume_image_urls(image_queue, img_subfolder)) for _ in range(2000))   
+        tasks.extend(asyncio.create_task(produce_books(url_queue, book_queue, image_queue))for _ in range(1000))
+        tasks.extend(asyncio.create_task(consume_books(book_queue)) for _ in range(1000))   
+        tasks.extend(asyncio.create_task(consume_image_urls(image_queue, img_subfolder)) for _ in range(1000))   
         await url_queue.join()  
         await book_queue.join()
         await image_queue.join()  
