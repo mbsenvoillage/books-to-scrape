@@ -1,81 +1,57 @@
-from urllib import error
-import logging
-from utils import get_page_html
-from urllib.error import URLError
+import asyncio, logging, re, os
+from utils import get_soup, scrape_item_from_page
+from file_writer import get_imgs_dir_path
+from dotenv import load_dotenv
 
-logging.basicConfig(filename='app.log', format='%(asctime)s: Module: %(module)s / Function: %(funcName)s / Level: %(levelname)s => %(message)s')
+load_dotenv()
 
-def get_category(parsed_html: object) -> str:
-    ul = parsed_html.find('ul', {'class': 'breadcrumb'}).find_all('li')
-    category = ul[2].a.text  
-    return category.strip()
-            
-def get_table(parsed_html: object) -> object:
-    table = {}
-    td = parsed_html.findAll('td')
-    table['universal_product_code (upc)'] = td[0].text
-    table['price_excluding_tax'] = td[2].text
-    table['price_including_tax'] = td[3].text
-    num = ''
-    for character in td[5].text:
-        if character.isdigit():
-            num += character
-    table['number_available'] = num
-    return table
- 
+fieldnames = os.getenv('FIELDNAMES').split(',')
+baseurl = os.getenv('BASE_URL')
 
-def get_rating(parsed_html: object) -> str:
+def get_rating(string) -> str:
     ratings = ['one', 'two', 'three', 'four', 'five']
-    star = parsed_html.select('.star-rating')
-    num_of_stars = star[0]['class'][1].lower()       
+    num_of_stars = string['class'][1].lower()       
     return str(ratings.index(num_of_stars)+1)
-        
-def get_description(parsed_html: object) -> str:
-    description = ''
-    product_description = parsed_html.find('div', {'id': 'product_description'})
-    if (not product_description):
-        return 'No description'
-    siblings = product_description.next_siblings
-    for sibling in siblings:
-        if sibling.name == "p":
-            description = sibling.text 
-    return description
 
-def get_title(parsed_html: object) -> str:
-    return parsed_html.find('h1').text   
-
-def get_picture_url(parsed_html: object) -> str:
-    return parsed_html.find('img')['src']
-
-def is_page_scrapable(url: str) -> object:
+def assemble_image_local_file_path(url: str, upc, file_data) -> str:
+    """Generates a local file path for a downloaded picture"""
+    full_url = baseurl + url.split('../')[-1]
     try:
-        html = get_page_html(url)
-        assert html != None, "The Beautiful Soup parser returned an empty object"
-    except URLError as e :
-        logging.error(f"{e} - URL: {url}.")
-        raise   
-    except AssertionError as e:
+        file_extension = full_url.split('.')[-1]
+        filename = f"/{upc}.{file_extension}"
+        file_data.append({'url': full_url, 'filename': filename})
+        return 'file://' + get_imgs_dir_path() + filename
+    except Exception as e:
         logging.error(e)
-        raise
-    else:
-        return html
+    return 'An error occurred'
 
-def scrape(url: str) -> object:
+
+async def get_book_property(property_name, url, soup, file_data)-> str:
+    """Takes a book property as parameter and returns a string containing the queried book property (scrapes elements from book page)"""
+    selectors = {
+        'url': url,
+        'title' : scrape_item_from_page(soup, 'h1'),
+        'product_description' : scrape_item_from_page(soup, '#content_inner > article > p'),
+        'category': scrape_item_from_page(soup, '#default > div > div > ul > li:nth-child(3) > a'),
+        'review_rating' : scrape_item_from_page(soup, '#content_inner > article > div.row > div.col-sm-6.product_main > p.star-rating', process=lambda x: get_rating(x)),
+        'image_url': assemble_image_local_file_path(scrape_item_from_page(soup, '#product_gallery > div > div > div > img', process=lambda x: x['src']), scrape_item_from_page(soup, 'table tr:nth-child(1) > td'), file_data),
+        'universal_product_code (upc)': scrape_item_from_page(soup, 'table tr:nth-child(1) > td'),
+        'price_excluding_tax': scrape_item_from_page(soup, 'table tr:nth-child(3) > td'),
+        'price_including_tax': scrape_item_from_page(soup, 'table tr:nth-child(4) > td'),
+        'number_available': scrape_item_from_page(soup, 'table tr:nth-child(6) > td', process=lambda x: re.findall(r'\d+',x.text)[0])}
+    return selectors[property_name]
+
+
+async def scrape(url: str, book_queue: asyncio.Queue, image_url_queue: asyncio.Queue, ordered_property_names=fieldnames) -> object:  
+    """Scrapes required information from a book page. Pushes book dict and image url to asyncio queues"""
     scrape_dict = {}
-    html = is_page_scrapable(url)
+    file_data = []
     try:
-        for key, value in get_table(html).items():
-            scrape_dict[key] = value
-        scrape_dict['url'] = url
-        scrape_dict['title'] = get_title(html)
-        scrape_dict['product_description'] = get_description(html)
-        scrape_dict['category'] = get_category(html)
-        scrape_dict['review_rating'] = get_rating(html)
-        scrape_dict['image_url'] = get_picture_url(html)
-    except (AttributeError, KeyError) as e:
-        logging.error(e)
-        raise
+        soup = await get_soup(url)
+        for property_name in ordered_property_names:
+            scrape_dict[property_name] = await get_book_property(property_name, url, soup, file_data)
+        await image_url_queue.put(file_data[0])
     except Exception as e:
         logging.error(e)
         raise
-    return scrape_dict
+    await book_queue.put(scrape_dict)
