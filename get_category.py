@@ -32,19 +32,27 @@ async def cat_page_url(url, starturl, queue: asyncio.Queue):
         
 async def consumer(queue: asyncio.Queue, outerurl_queue: asyncio.Queue):
     """Retrieves the soup object of a category page from a queue, extracts all the book urls from that page and adds those URLs to an array provided as a dependency"""
-    soup = await queue.get()
-    urls = scrape_item_from_page(soup, '#default > div > div > div > div > section > div:nth-child(2) > ol > li > article > h3 > a', multi=True, process=lambda x: reformat_book_page_urls(x))   
-    for url in urls:
-        await outerurl_queue.put(url)
-    queue.task_done()
+    try:
+        soup = await queue.get()
+    except asyncio.CancelledError:
+        return
+    else:
+        urls = scrape_item_from_page(soup, '#default > div > div > div > div > section > div:nth-child(2) > ol > li > article > h3 > a', multi=True, process=lambda x: reformat_book_page_urls(x))   
+        for url in urls:
+            await outerurl_queue.put(url)
+        queue.task_done()
 
 
 async def producer(outgoingQueue: asyncio.Queue, incomingQueue: asyncio.Queue):
     """Retrieves the URL of a category page from an array and pushes the soup object of that page on another queue"""
-    url = await incomingQueue.get()
-    soup = await get_soup(url)
-    await outgoingQueue.put(soup)
-    incomingQueue.task_done()
+    try:
+        url = await incomingQueue.get()
+    except asyncio.CancelledError:
+        return
+    else:
+        soup = await get_soup(url)
+        await outgoingQueue.put(soup)
+        incomingQueue.task_done()
     
     
 def how_many_pages(soup):
@@ -54,8 +62,8 @@ def how_many_pages(soup):
 
 async def scrape(url: str, outerurl_queue: asyncio.Queue, number_of_books):
     """Produces the URLs of all the books in a category. Pushes book page urls to an asyncio queue"""
-    soup_queue = asyncio.Queue()
-    url_queue = asyncio.Queue()
+    soup_queue = asyncio.Queue(maxsize=100)
+    url_queue = asyncio.Queue(maxsize=100)
     tasks = []
     length = how_many_pages(await get_soup(url))
     await url_queue.put(url)
@@ -64,9 +72,12 @@ async def scrape(url: str, outerurl_queue: asyncio.Queue, number_of_books):
             task = asyncio.create_task(cat_page_url(reformat_cat_page_url(url, i+1), url, url_queue))
             tasks.append(task) 
     tasks.extend(asyncio.create_task(producer(soup_queue, url_queue)) for _ in range(number_of_books))
-    tasks.extend(asyncio.create_task(consumer(soup_queue, outerurl_queue)) for _ in range(number_of_books))     
+    tasks.extend(asyncio.create_task(consumer(soup_queue, outerurl_queue)) for _ in range(number_of_books))   
+    for completed in asyncio.as_completed([*tasks]):
+        await completed
+        break 
     await soup_queue.join()
     await url_queue.join()
     for c in tasks:
         c.cancel()
-    await gather(*tasks, return_exceptions=True)      
+    # await gather(*tasks, return_exceptions=True)      
