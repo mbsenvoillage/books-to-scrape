@@ -28,7 +28,7 @@ async def cat_page_url(url, starturl, queue: asyncio.Queue):
     next_url = scrape_item_from_page(soup, '#default > div > div > div > div > section > div:nth-child(2) > div > ul > li.next > a', process=lambda x: reformat_cat_page_url(starturl, None, x))
     if next_url == 'Nothing found': return 
     else:
-        await queue.put_nowait(next_url)
+        await queue.put(next_url)
         
 async def consumer(queue: asyncio.Queue, outerurl_queue: asyncio.Queue):
     """Retrieves the soup object of a category page from a queue, extracts all the book urls from that page and adds those URLs to an array provided as a dependency"""

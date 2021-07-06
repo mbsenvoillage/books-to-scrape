@@ -44,7 +44,8 @@ async def main(url):
     img_subfolder = '_'.join(time.ctime().split())
     try:
         tasks = []
-        await gather(get_category.scrape(url, url_queue, 1000), return_exceptions=True)
+        await asyncio.wait_for(get_category.scrape(url, url_queue, 1000), timeout=10)
+        #await gather(get_category.scrape(url, url_queue, 1000), return_exceptions=True)
         tasks.extend(asyncio.create_task(produce_books(url_queue, book_queue, image_queue))for _ in range(1000))
         tasks.extend(asyncio.create_task(consume_books(book_queue)) for _ in range(1000))   
         tasks.extend(asyncio.create_task(consume_image_urls(image_queue, img_subfolder)) for _ in range(1000))   
