@@ -1,14 +1,21 @@
 from asyncio.tasks import gather
 import get_book, get_category, logging, file_writer, time, sys, asyncio, os
 from dotenv import load_dotenv
+import resource
+
 
 def init_logger():
+    if not os.path.exists('app.log'):
+        with open('app.log', 'w'): pass
     logging.basicConfig(filename='app.log', format='%(asctime)s: Module: %(module)s / Function: %(funcName)s / Level: %(levelname)s => %(message)s')
 
 if __name__ == '__main__':
+    file_writer.create_folder('csv')   
     init_logger()
     if sys.version_info[0] == 3 and sys.version_info[1] >= 8 and sys.platform.startswith('win'):
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+    soft, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
+    resource.setrlimit(resource.RLIMIT_NOFILE, (hard, hard))
     load_dotenv()
 
 
@@ -42,32 +49,15 @@ async def consume_image_urls(image_url_list, img_subfolfer):
 
 
 async def main(url):
-    file_writer.create_folder('csv')    
-    # book_queue = asyncio.Queue()
-    # url_queue = asyncio.Queue()
-    # image_queue = asyncio.Queue()
-    img_subfolder = '_'.join(time.ctime().split())
     image_url_list = []
     try:
-        tasks = []
-        # await asyncio.wait_for(get_category.scrape(url, url_queue, 1000), timeout=10)
-        prod = await asyncio.wait_for(asyncio.gather(get_category.scrape(url, 200)), timeout=20)
-        s = await produce_books(prod[0], image_url_list)
-        await asyncio.gather(consume_books(s), consume_image_urls(image_url_list, img_subfolder))
-        # # for completed in asyncio.as_completed([*tasks]):
-        # #     await completed
-        # #     break  
-        # await url_queue.join()  
-        # await book_queue.join()
-        # await image_queue.join()
-        # for task in tasks:
-        #     task.cancel()   
-        # await gather(*tasks, return_exceptions=True)
+        urls = await asyncio.wait_for(asyncio.gather(get_category.scrape(url, 200)), timeout=20)
+        s = await produce_books(urls[0], image_url_list)
+        await asyncio.gather(consume_books(s), consume_image_urls(image_url_list, '_'.join(time.ctime().split())))
     except asyncio.TimeoutError:
         print('timed out')
     except Exception as e:
         logging.error(e)
-        print(e)
         print("An error occurred")
         exit()
     else:
