@@ -42,7 +42,7 @@ async def get_book_property(property_name, url, soup, file_data)-> str:
     return selectors[property_name]
 
 
-async def scrape(url: str, book_queue: asyncio.Queue, image_url_queue: asyncio.Queue, ordered_property_names=fieldnames) -> object:  
+async def scrape(url: str, image_url_list, ordered_property_names=fieldnames) -> object:  
     """Scrapes required information from a book page. Pushes book dict and image url to asyncio queues"""
     scrape_dict = {}
     file_data = []
@@ -50,8 +50,9 @@ async def scrape(url: str, book_queue: asyncio.Queue, image_url_queue: asyncio.Q
         soup = await get_soup(url)
         for property_name in ordered_property_names:
             scrape_dict[property_name] = await get_book_property(property_name, url, soup, file_data)
-        await image_url_queue.put(file_data[0])
+        image_url_list.append(file_data[0])
     except Exception as e:
         logging.error(e)
         raise
-    await book_queue.put(scrape_dict)
+    print(scrape_dict)
+    return scrape_dict

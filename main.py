@@ -16,24 +16,40 @@ url = os.getenv('DEFAULT_SCRAPING_URL')
 
 start = time.time()
 
-async def produce_books(url_queue: asyncio.Queue, book_queue: asyncio.Queue, imageurl_queue: asyncio.Queue):
+async def produce_books(url_list, image_url_list):
     """Gets book page url off the url_queue and scrapes the book page"""
-    url = await url_queue.get()
-    await get_book.scrape(url, book_queue, imageurl_queue)
-    url_queue.task_done()
+    try:
+        book_list = await asyncio.wait_for(asyncio.gather(*[get_book.scrape(url, image_url_list) for url in url_list]), timeout=90)
+    except asyncio.TimeoutError:
+        print('timed out')
+    return book_list
 
 async def consume_books(book_queue: asyncio.Queue):
     """Gets book dict off the book_queue and writes the book info to csv"""
-    book = await book_queue.get()
-    cat = book['category']
-    await file_writer.write_file(f'./csv/{cat}', 'a', book)
-    book_queue.task_done()
+    while True:
+        try:
+            book = await book_queue.get()
+            if book is None:
+                return
+        except asyncio.CancelledError:
+            return
+        else:
+            cat = book['category']
+            await file_writer.write_file(f'./csv/{cat}', 'a', book)
+            book_queue.task_done()
 
 async def consume_image_urls(imageurl_queue: asyncio.Queue, img_subfolfer):
     """Gets image url off a queue and downloads the image"""
-    image_object = await imageurl_queue.get()
-    await file_writer.download_image(image_object['url'], image_object['filename'], img_subfolfer)
-    imageurl_queue.task_done()
+    while True:
+        try:
+            image_object = await imageurl_queue.get()
+            if image_object is None:
+                return
+        except asyncio.CancelledError:
+            return
+        else:
+            await file_writer.download_image(image_object['url'], image_object['filename'], img_subfolfer)
+            imageurl_queue.task_done()
 
 
 async def main(url):
@@ -42,20 +58,30 @@ async def main(url):
     url_queue = asyncio.Queue()
     image_queue = asyncio.Queue()
     img_subfolder = '_'.join(time.ctime().split())
+    image_url_list = []
     try:
         tasks = []
-        await gather(get_category.scrape(url, url_queue, 1000), return_exceptions=True)
-        tasks.extend(asyncio.create_task(produce_books(url_queue, book_queue, image_queue))for _ in range(1000))
-        tasks.extend(asyncio.create_task(consume_books(book_queue)) for _ in range(1000))   
-        tasks.extend(asyncio.create_task(consume_image_urls(image_queue, img_subfolder)) for _ in range(1000))   
-        await url_queue.join()  
-        await book_queue.join()
-        await image_queue.join()  
-        for task in tasks:
-            task.cancel()   
-        await gather(*tasks, return_exceptions=True)
+        # await asyncio.wait_for(get_category.scrape(url, url_queue, 1000), timeout=10)
+        prod = await asyncio.wait_for(asyncio.gather(get_category.scrape(url, url_queue, 200)), timeout=20)
+        print(len(prod[0]))
+        s = asyncio.wait_for(asyncio.gather(produce_books(prod[0], image_url_list)), timeout=300)
+        # print(s)
+        # tasks.append(asyncio.create_task(consume_books(book_queue)))
+        # tasks.append(asyncio.create_task(consume_image_urls(image_queue, img_subfolder)))
+        # # for completed in asyncio.as_completed([*tasks]):
+        # #     await completed
+        # #     break  
+        # await url_queue.join()  
+        # await book_queue.join()
+        # await image_queue.join()
+        # for task in tasks:
+        #     task.cancel()   
+        # await gather(*tasks, return_exceptions=True)
+    except asyncio.TimeoutError:
+        print('timed out')
     except Exception as e:
         logging.error(e)
+        print(e)
         print("An error occurred")
         exit()
     else:
