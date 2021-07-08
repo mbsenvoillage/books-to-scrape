@@ -54,5 +54,4 @@ async def scrape(url: str, image_url_list, ordered_property_names=fieldnames) ->
     except Exception as e:
         logging.error(e)
         raise
-    print(scrape_dict)
     return scrape_dict

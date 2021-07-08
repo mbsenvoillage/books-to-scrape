@@ -61,7 +61,7 @@ def how_many_pages(soup):
     num = math.floor(int(scrape_item_from_page(soup, '#default > div > div > div > div > form > strong'))/20)
     return 1 if num < 1 else num
 
-async def scrape(url: str, outerurl_queue: asyncio.Queue, number_of_books):
+async def scrape(url: str, number_of_books):
     """Produces the URLs of all the books in a category. Pushes book page urls to an asyncio queue"""
     soup_queue = asyncio.Queue(maxsize=100)
     url_queue = asyncio.Queue(maxsize=100)
