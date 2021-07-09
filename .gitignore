@@ -5,3 +5,4 @@ __pycache__/
 *.jpg
 imgs/
 .DS_Store
+recipe.md
