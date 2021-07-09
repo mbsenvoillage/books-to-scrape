@@ -44,16 +44,16 @@ async def consumer(queue: asyncio.Queue, list_of_url):
         
 
 
-async def producer(outgoingQueue: asyncio.Queue, incomingQueue: asyncio.Queue):
+async def producer(outgoing_queue: asyncio.Queue, incoming_queue: asyncio.Queue):
     """Retrieves the URL of a category page from an array and pushes the soup object of that page on another queue"""
     try:
-        url = await incomingQueue.get()
+        url = await incoming_queue.get()
     except asyncio.CancelledError:
         return
     else:
         soup = await get_soup(url)
-        await outgoingQueue.put(soup)
-        incomingQueue.task_done()
+        await outgoing_queue.put(soup)
+        incoming_queue.task_done()
     
     
 def how_many_pages(soup):
