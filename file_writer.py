@@ -1,4 +1,5 @@
 import csv, logging, os, aiohttp, aiofiles
+from aiohttp.resolver import AsyncResolver
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -21,11 +22,12 @@ def create_folder(dirname):
     if not os.path.exists(dirname):
         os.makedirs(dirname)  
 
-
-async def download_image(url, filename, subfolder, dirname='imgs'):
+async def download_image(url, filename, subfolder, semaphore, dirname='imgs'):
+    resolver = AsyncResolver(nameservers=["8.8.8.8", "8.8.4.4"])
+    connector = aiohttp.TCPConnector(limit=0, resolver=resolver)  # need unlimited connections
     try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url) as res:
+        async with aiohttp.ClientSession(connector=connector) as session:
+            async with semaphore, session.get(url) as res:
                 if res.status == 200:
                     create_folder(dirname + '/' + subfolder)
                     async with aiofiles.open(f'{dirname}/{subfolder}/{filename}', 'wb') as img:

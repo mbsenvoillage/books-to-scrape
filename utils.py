@@ -1,20 +1,27 @@
 from aiohttp.client_exceptions import ClientError
 from bs4 import BeautifulSoup
-import logging, aiohttp, os
+import logging, aiohttp, os, asyncio
 from aiohttp.web import HTTPException
 from dotenv import load_dotenv
+from aiohttp.resolver import AsyncResolver
 
 load_dotenv()
 fieldnames = os.getenv('FIELDNAMES')
 
-async def get_page(url: str):
+
+
+
+
+async def get_page(url: str, semaphore):
     """Takes URL as parameter and returns the response object from request"""
     res = ''  
     try:
-        async with aiohttp.ClientSession() as session:
-            res = await session.get(url)
-            res.raise_for_status()
-            content = await res.text()
+        resolver = AsyncResolver(nameservers=["8.8.8.8", "8.8.4.4"])
+        connector = aiohttp.TCPConnector(limit=0, resolver=resolver)  # need unlimited connections
+        async with aiohttp.ClientSession(connector=connector) as session:
+            async with semaphore, session.get(url) as res:
+                res.raise_for_status()
+                content = await res.text()
     except (Exception, HTTPException, ClientError) as e:
         logging.error(e)
         logging.error(f"something is wrong with url {url}")
@@ -22,11 +29,11 @@ async def get_page(url: str):
     else:
         return content
 
-async def get_soup(url: str):
+async def get_soup(url: str, semaphore):
     """Takes URL as parameter and returns a BeautifulSoup object"""
     bs = ''
     try:
-        res = await get_page(url) 
+        res = await get_page(url, semaphore) 
     except Exception as e:
         raise
     else:

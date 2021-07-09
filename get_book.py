@@ -42,12 +42,12 @@ async def get_book_property(property_name, url, soup, file_data)-> str:
     return selectors[property_name]
 
 
-async def scrape(url: str, image_url_list, ordered_property_names=fieldnames) -> object:  
+async def scrape(url: str, image_url_list, semaphore, ordered_property_names=fieldnames) -> object:  
     """Scrapes required information from a book page. Pushes book dict and image url to asyncio queues"""
     scrape_dict = {}
     file_data = []
     try:
-        soup = await get_soup(url)
+        soup = await get_soup(url, semaphore)
         for property_name in ordered_property_names:
             scrape_dict[property_name] = await get_book_property(property_name, url, soup, file_data)
         image_url_list.append(file_data[0])

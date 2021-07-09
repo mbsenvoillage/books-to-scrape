@@ -23,13 +23,14 @@ if __name__ == '__main__':
 
 
 url = os.getenv('DEFAULT_SCRAPING_URL')
+semaphore = asyncio.Semaphore(1024)
 
 start = time.time()
 
 async def produce_books(url_list, image_url_list):
     """Gets book page url off the url_queue and scrapes the book page"""
     try:
-        book_list = await asyncio.wait_for(asyncio.gather(*[get_book.scrape(url, image_url_list) for url in url_list]), timeout=90)
+        book_list = await asyncio.wait_for(asyncio.gather(*[get_book.scrape(url, image_url_list, semaphore) for url in url_list]), timeout=200)
     except asyncio.TimeoutError:
         print('timed out')
     return book_list
@@ -46,7 +47,7 @@ async def consume_books(list_of_books):
 async def consume_image_urls(image_url_list, img_subfolfer):
     """Gets image url off a queue and downloads the image"""
     try:
-        await asyncio.gather(*[file_writer.download_image(image_object['url'], image_object['filename'], img_subfolfer) for image_object in image_url_list])
+        await asyncio.gather(*[file_writer.download_image(image_object['url'], image_object['filename'], img_subfolfer, semaphore) for image_object in image_url_list])
     except Exception as e:
          raise(e)
 
@@ -54,7 +55,7 @@ async def consume_image_urls(image_url_list, img_subfolfer):
 async def main(url):
     image_url_list = []
     try:
-        urls = await asyncio.wait_for(asyncio.gather(get_category.scrape(url, 200)), timeout=20)
+        urls = await asyncio.wait_for(asyncio.gather(get_category.scrape(url, 200, semaphore)), timeout=200)
         s = await produce_books(urls[0], image_url_list)
         await asyncio.gather(consume_books(s), consume_image_urls(image_url_list, '_'.join(time.ctime().split())))
     except asyncio.TimeoutError:
